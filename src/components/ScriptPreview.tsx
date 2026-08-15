@@ -25,6 +25,7 @@ export function ScriptPreview({ nodes, connections }: ScriptPreviewProps) {
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
+        minWidth: 0,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -51,7 +52,11 @@ export function ScriptPreview({ nodes, connections }: ScriptPreviewProps) {
         style={{
           flex: 1,
           minHeight: 0,
-          overflow: 'auto',
+          minWidth: 0,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          whiteSpace: 'pre-wrap',
+          overflowWrap: 'anywhere',
           margin: 0,
           fontSize: 11,
           lineHeight: 1.4,
