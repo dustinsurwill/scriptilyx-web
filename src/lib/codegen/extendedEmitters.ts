@@ -643,7 +643,7 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
     const distance = numberLiteral(prop(node, 'Distance'))
     const pitch = numberLiteral(prop(node, 'Pitch'))
     const yaw = numberLiteral(prop(node, 'Yaw'))
-    const id = sanitize(node.Id)
+    const id = node.Number
     return {
       kind: 'condition',
       statements: [
@@ -807,10 +807,6 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
       ctx.next(node, 'Next'),
     ],
   }),
-}
-
-function sanitize(id: string): string {
-  return id.replace(/[^a-zA-Z0-9_]/g, '')
 }
 
 function terminalPropertySetterGetter(csharpType: 'float' | 'bool' | 'long' | 'string'): NodeEmitter {

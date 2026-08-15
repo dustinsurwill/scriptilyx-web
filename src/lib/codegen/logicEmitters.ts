@@ -28,8 +28,8 @@ export const ifArgumentEqualsEmitter: NodeEmitter = (node) => ({
 
 export const runEverySecondsEmitter: NodeEmitter = (node, ctx) => {
   ctx.useHelper('Vars')
-  const elapsedKey = stringLiteral(`__runEvery_${node.Id}`)
-  const dueKey = stringLiteral(`__runEveryDue_${node.Id}`)
+  const elapsedKey = stringLiteral(`runEvery_${node.Number}`)
+  const dueKey = stringLiteral(`runEveryDue_${node.Number}`)
   const seconds = prop(node, 'Seconds') || '0'
   return {
     kind: 'condition',
@@ -62,7 +62,7 @@ export const noteEmitter: NodeEmitter = (node, ctx) => ({
 
 export const waitSecondsEmitter: NodeEmitter = (node, ctx) => {
   ctx.useHelper('Vars')
-  const key = stringLiteral(`__wait_${node.Id}`)
+  const key = stringLiteral(`wait_${node.Number}`)
   return {
     kind: 'raw',
     statements: [
@@ -131,7 +131,7 @@ export const numberGreaterRouterEmitter: NodeEmitter = (node, ctx) => {
 
 export const repeatTimesEmitter: NodeEmitter = (node, ctx) => {
   ctx.useHelper('Vars')
-  const key = stringLiteral(`__repeat_${node.Id}`)
+  const key = stringLiteral(`repeat_${node.Number}`)
   const times = prop(node, 'Times')
   return {
     kind: 'raw',

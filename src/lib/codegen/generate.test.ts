@@ -88,7 +88,7 @@ describe('generateScript', () => {
     ]
 
     const { source } = generateScript(nodes, connections)
-    expect(source).toContain(`double Num_repeat_${repeat.Id};`)
+    expect(source).toContain(`double Num_repeat_${repeat.Number};`)
     // The loop body's Next wire calls back into the repeat node's own method.
     expect(source).toMatch(new RegExp(`${methodName(repeat)}\\(\\);\\s*\\}`))
   })
@@ -189,5 +189,40 @@ describe('generateScript', () => {
     expect(source).not.toContain('GetNum(')
     expect(source).not.toContain('_num[')
     expect(source).not.toContain('Dictionary<string, double>')
+  })
+})
+
+describe('auto Runtime.UpdateFrequency', () => {
+  it('sets an update frequency in Program() when the graph uses RunEverySeconds but never sets one', () => {
+    const start = node({ ActionType: 'Start' })
+    const every = node({ ActionType: 'RunEverySeconds', Properties: { Seconds: '5' }, OutputPorts: ['True', 'False'] })
+    const nodes = [start, every]
+    const connections = [wire(start, 'Next', every)]
+
+    const { source, warnings } = generateScript(nodes, connections)
+    expect(source).toMatch(/public Program\(\) \{\s*Runtime\.UpdateFrequency = UpdateFrequency\.Update10;/)
+    expect(warnings.some((w) => w.includes('Added "Runtime.UpdateFrequency'))).toBe(true)
+  })
+
+  it('does not override an explicit SetRuntimeUpdate node', () => {
+    const start = node({ ActionType: 'Start' })
+    const setFreq = node({ ActionType: 'SetRuntimeUpdate', Properties: { Frequency: 'Update100' } })
+    const every = node({ ActionType: 'RunEverySeconds', Properties: { Seconds: '5' }, OutputPorts: ['True', 'False'] })
+    const nodes = [start, setFreq, every]
+    const connections = [wire(start, 'Next', setFreq), wire(setFreq, 'Next', every)]
+
+    const { source, warnings } = generateScript(nodes, connections)
+    expect(source).toContain('public Program() {\n}')
+    expect(warnings.some((w) => w.includes('Added "Runtime.UpdateFrequency'))).toBe(false)
+  })
+
+  it('does not add anything for graphs with no timing nodes', () => {
+    const start = node({ ActionType: 'Start' })
+    const echo = node({ ActionType: 'Echo', Properties: { Text: 'hi' } })
+    const nodes = [start, echo]
+    const connections = [wire(start, 'Next', echo)]
+
+    const { source } = generateScript(nodes, connections)
+    expect(source).toContain('public Program() {\n}')
   })
 })
