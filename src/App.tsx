@@ -5,6 +5,7 @@ import { NodePalette } from './components/NodePalette'
 import { GraphCanvas } from './components/GraphCanvas'
 import { PropertyPanel } from './components/PropertyPanel'
 import { ValidationPanel } from './components/ValidationPanel'
+import { ScriptPreview } from './components/ScriptPreview'
 import { useGraphStore } from './store/graphStore'
 import { getGraphIssues } from './lib/graphIssues'
 
@@ -49,15 +50,18 @@ function App() {
         style={{
           borderLeft: '1px solid #374151',
           display: 'grid',
-          gridTemplateRows: '1fr 1fr',
+          gridTemplateRows: '1fr 1fr 1fr',
           minHeight: 0,
         }}
       >
         <div style={{ borderBottom: '1px solid #374151', minHeight: 0 }}>
           <PropertyPanel scriptNode={selectedNode} definition={selectedDefinition} />
         </div>
-        <div style={{ minHeight: 0 }}>
+        <div style={{ borderBottom: '1px solid #374151', minHeight: 0 }}>
           <ValidationPanel issues={issues} />
+        </div>
+        <div style={{ minHeight: 0 }}>
+          <ScriptPreview nodes={nodes} connections={connections} />
         </div>
       </div>
     </div>

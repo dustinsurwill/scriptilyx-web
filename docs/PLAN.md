@@ -5,9 +5,11 @@
 
 ## Status
 
+**Now working on Milestone 4 — Codegen, on branch `codegen-engine`.**
+
 - [x] Milestone 1 — Repo/pipeline skeleton (merged in #1)
 - [x] Milestone 2 — Data layer (merged in #2)
-- [x] Milestone 3 — Canvas (#3)
+- [x] Milestone 3 — Canvas (merged in #3)
 - [ ] Milestone 4 — Codegen
 - [ ] Milestone 5 — Minify
 - [ ] Milestone 6 — Persistence
