@@ -132,7 +132,11 @@ export function generateScript(
 
   lines.push(`string _argument = "";`)
   if (tickBudget) lines.push(`string _nextNode = null;`)
-  for (const id of usedHelpers) lines.push(HELPER_SOURCE[id])
+  for (const id of usedHelpers) {
+    const source = HELPER_SOURCE[id]
+    if (source === undefined) throw new Error(`codegen: unknown helper id "${id}" requested by an emitter`)
+    lines.push(source)
+  }
   lines.push('')
 
   lines.push(`public Program() {`)

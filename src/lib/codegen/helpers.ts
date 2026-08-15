@@ -36,9 +36,5 @@ bool GetBool(string k) => _bool.TryGetValue(k, out var v) && v;`,
     }
     return total;
 }`,
-}
-
-/** Helper ids implicitly required by another helper (dependency edges). */
-export const HELPER_DEPENDENCIES: Record<string, string[]> = {
-  GetGroupBlocks: [],
+  Rng: `Random _rng = new Random();`,
 }

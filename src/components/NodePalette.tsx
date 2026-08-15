@@ -45,7 +45,9 @@ function categoryRank(category: string): number {
 
 export function NodePalette({ nodeDefinitions, onAddNode }: NodePaletteProps) {
   const [query, setQuery] = useState('')
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [collapsed, setCollapsed] = useState<Set<string>>(
+    () => new Set(nodeDefinitions.map((n) => n.Category)),
+  )
 
   const grouped = useMemo(() => {
     const filtered = query.trim()

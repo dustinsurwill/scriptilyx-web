@@ -151,4 +151,22 @@ describe('generateScript', () => {
     expect(source).toContain('void Section_cleanup() {')
     expect(source).toContain('cleaning')
   })
+
+  it('end-to-end: every helper an ExtendedBuiltin node requests is actually declared in the output', () => {
+    // Regression coverage for the class of bug where ctx.useHelper('Rng') was
+    // called but 'Rng' had no entry in HELPER_SOURCE, silently emitting the
+    // literal text "undefined" into the generated script.
+    const start = node({ ActionType: 'Start' })
+    const random = node({
+      ActionType: 'ExtendedBuiltin',
+      DefinitionId: 'ext.var.random',
+      Properties: { Name: 'x', Minimum: '0', Maximum: '1' },
+    })
+    const nodes = [start, random]
+    const connections = [wire(start, 'Next', random)]
+
+    const { source } = generateScript(nodes, connections)
+    expect(source).not.toContain('undefined')
+    expect(source).toContain('Random _rng = new Random();')
+  })
 })
