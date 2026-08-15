@@ -1,5 +1,6 @@
 import type { ScriptNode } from '../../types/graph'
 import { genericEmitters } from './emitters'
+import { extendedEmitters } from './extendedEmitters'
 import * as logic from './logicEmitters'
 import type { NodeEmitter } from './types'
 
@@ -33,11 +34,6 @@ const emitterByActionType: Record<string, NodeEmitter> = {
   ...controlFlowEmitters,
 }
 
-/** `ExtendedBuiltin` nodes are disambiguated by their node-library id, not
- * their (shared) ActionType; none are implemented yet, so every one falls
- * through to the stub below until a follow-up pass fills the table in. */
-const extendedBuiltinEmitters: Record<string, NodeEmitter> = {}
-
 function stubEmitter(node: ScriptNode, ctx: Parameters<NodeEmitter>[1]): ReturnType<NodeEmitter> {
   return {
     kind: 'action',
@@ -50,7 +46,7 @@ function stubEmitter(node: ScriptNode, ctx: Parameters<NodeEmitter>[1]): ReturnT
 
 export function resolveEmitter(node: ScriptNode): NodeEmitter {
   if (node.ActionType === 'ExtendedBuiltin') {
-    return extendedBuiltinEmitters[node.DefinitionId] ?? stubEmitter
+    return extendedEmitters[node.DefinitionId] ?? stubEmitter
   }
   return emitterByActionType[node.ActionType] ?? stubEmitter
 }

@@ -118,14 +118,24 @@ describe('generateScript', () => {
     expect(source).not.toMatch(new RegExp(`void N_${start.Id}\\(\\)`))
   })
 
-  it('stubs unimplemented ExtendedBuiltin nodes with a clear TODO', () => {
+  it('resolves ExtendedBuiltin nodes by their node-library id', () => {
     const start = node({ ActionType: 'Start' })
     const ext = node({ ActionType: 'ExtendedBuiltin', DefinitionId: 'ext.piston.if_extended' })
     const nodes = [start, ext]
     const connections = [wire(start, 'Next', ext)]
 
     const { source } = generateScript(nodes, connections)
-    expect(source).toContain('// TODO codegen: ext.piston.if_extended')
+    expect(source).toContain('v.CurrentPosition >= v.HighestPosition')
+  })
+
+  it('falls back to a TODO stub for an unrecognized ExtendedBuiltin id', () => {
+    const start = node({ ActionType: 'Start' })
+    const ext = node({ ActionType: 'ExtendedBuiltin', DefinitionId: 'ext.made_up.not_real' })
+    const nodes = [start, ext]
+    const connections = [wire(start, 'Next', ext)]
+
+    const { source } = generateScript(nodes, connections)
+    expect(source).toContain('// TODO codegen: ext.made_up.not_real')
   })
 
   it('resolves CallSection to the matching StartSection node by name', () => {

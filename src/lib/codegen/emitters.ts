@@ -287,8 +287,7 @@ export const genericEmitters: Record<string, NodeEmitter> = {
     return {
       kind: 'action',
       statements: [
-        `GetBlock(${name})?.SetValue<float>("LowerLimit", (float)${numberLiteral(prop(node, 'LowerLimitDeg'))});`,
-        `GetBlock(${name})?.SetValue<float>("UpperLimit", (float)${numberLiteral(prop(node, 'UpperLimitDeg'))});`,
+        `{ if (GetBlock(${name}) is IMyMotorStator v) { v.LowerLimitDeg = (float)${numberLiteral(prop(node, 'LowerLimitDeg'))}; v.UpperLimitDeg = (float)${numberLiteral(prop(node, 'UpperLimitDeg'))}; } }`,
         ctx.next(node, 'Next'),
       ],
     }
@@ -299,8 +298,7 @@ export const genericEmitters: Record<string, NodeEmitter> = {
     return {
       kind: 'action',
       statements: [
-        `GetBlock(${name})?.SetValue<float>("LowerLimit", (float)${numberLiteral(prop(node, 'LowerLimitDeg'))});`,
-        `GetBlock(${name})?.SetValue<float>("UpperLimit", (float)${numberLiteral(prop(node, 'UpperLimitDeg'))});`,
+        `{ if (GetBlock(${name}) is IMyMotorStator v) { v.LowerLimitDeg = (float)${numberLiteral(prop(node, 'LowerLimitDeg'))}; v.UpperLimitDeg = (float)${numberLiteral(prop(node, 'UpperLimitDeg'))}; } }`,
         ctx.next(node, 'Next'),
       ],
     }
@@ -311,8 +309,7 @@ export const genericEmitters: Record<string, NodeEmitter> = {
     return {
       kind: 'action',
       statements: [
-        `GetBlock(${name})?.SetValue<float>("LowerLimit", float.MinValue);`,
-        `GetBlock(${name})?.SetValue<float>("UpperLimit", float.MaxValue);`,
+        `{ if (GetBlock(${name}) is IMyMotorStator v) { v.LowerLimitDeg = float.MinValue; v.UpperLimitDeg = float.MaxValue; } }`,
         ctx.next(node, 'Next'),
       ],
     }
@@ -323,8 +320,7 @@ export const genericEmitters: Record<string, NodeEmitter> = {
     return {
       kind: 'action',
       statements: [
-        `GetBlock(${name})?.SetValue<float>("LowerLimit", float.MinValue);`,
-        `GetBlock(${name})?.SetValue<float>("UpperLimit", float.MaxValue);`,
+        `{ if (GetBlock(${name}) is IMyMotorStator v) { v.LowerLimitDeg = float.MinValue; v.UpperLimitDeg = float.MaxValue; } }`,
         ctx.next(node, 'Next'),
       ],
     }
@@ -406,7 +402,7 @@ export const genericEmitters: Record<string, NodeEmitter> = {
   CargoPercentBelow: blockCondition(
     'IMyCargoContainer',
     (v, n) =>
-      `(double)${v}.GetInventory().CurrentVolume / (double)${v}.GetInventory().MaxVolume * 100.0 < ${numberLiteral(prop(n, 'Percent'))}`,
+      `(double)${v}.GetInventory(0).CurrentVolume / (double)${v}.GetInventory(0).MaxVolume * 100.0 < ${numberLiteral(prop(n, 'Percent'))}`,
   ),
   IfDoorState: blockCondition('IMyDoor', (v, n) => `${v}.Status.ToString() == ${stringLiteral(prop(n, 'State'))}`),
   IfGroupBlockState: (node, ctx) => {
@@ -445,41 +441,61 @@ export const genericEmitters: Record<string, NodeEmitter> = {
       `${stringLiteral(prop(n, 'SorterName') + ': ')} + ((GetBlock(${stringLiteral(prop(n, 'SorterName'))})?.IsWorking ?? false) ? "OK" : "Fault")`,
     'LcdName',
   ),
-  // Item allow-list add/remove/clear/query aren't exposed by the public PB
-  // API (the in-game filter list editor has no scripting surface), so these
-  // compile to a clear no-op rather than a guess.
-  SetConveyorSorterFilter: (node, ctx) => ({
-    kind: 'action',
-    statements: [
-      `// NOTE: conveyor sorter item filters are not scriptable via the public PB API; no-op.`,
-      ctx.next(node, 'Next'),
-    ],
-  }),
-  ClearConveyorSorterFilter: (node, ctx) => ({
-    kind: 'action',
-    statements: [
-      `// NOTE: conveyor sorter item filters are not scriptable via the public PB API; no-op.`,
-      ctx.next(node, 'Next'),
-    ],
-  }),
-  AddConveyorSorterFilterItem: (node, ctx) => ({
-    kind: 'action',
-    statements: [
-      `// NOTE: conveyor sorter item filters are not scriptable via the public PB API; no-op.`,
-      ctx.next(node, 'Next'),
-    ],
-  }),
-  RemoveConveyorSorterFilterItem: (node, ctx) => ({
-    kind: 'action',
-    statements: [
-      `// NOTE: conveyor sorter item filters are not scriptable via the public PB API; no-op.`,
-      ctx.next(node, 'Next'),
-    ],
-  }),
-  IfConveyorSorterAllowsItem: () => ({
-    kind: 'condition',
-    expression: `/* NOTE: conveyor sorter item filters are not scriptable via the public PB API */ true`,
-  }),
+  // IMyConveyorSorter.AddItem/RemoveItem/SetFilter/IsAllowed are real,
+  // scriptable methods (see docs/codegen-api-notes.md) — items are matched
+  // by a "TypeId/SubtypeId" string, e.g. "MyObjectBuilder_Ore/Iron".
+  SetConveyorSorterFilter: (node, ctx) => {
+    ctx.useHelper('GetBlock')
+    const name = stringLiteral(prop(node, 'SorterName'))
+    const mode = prop(node, 'Mode').trim() === 'Blacklist' ? 'Blacklist' : 'Whitelist'
+    return {
+      kind: 'action',
+      statements: [
+        `{ if (GetBlock(${name}) is IMyConveyorSorter s) {`,
+        `    var filter = new List<MyInventoryItemFilter>();`,
+        `    foreach (var line in (${stringLiteral(prop(node, 'FilterItems'))}).Split('\\n')) { var t = line.Trim(); if (t.Length > 0) filter.Add(new MyInventoryItemFilter(t, false)); }`,
+        `    s.SetFilter(MyConveyorSorterMode.${mode}, filter);`,
+        `    s.DrainAll = ${boolLiteral(prop(node, 'DrainAll'))};`,
+        `} }`,
+        ctx.next(node, 'Next'),
+      ],
+    }
+  },
+  ClearConveyorSorterFilter: (node, ctx) => {
+    ctx.useHelper('GetBlock')
+    return {
+      kind: 'action',
+      statements: [
+        `{ if (GetBlock(${stringLiteral(prop(node, 'SorterName'))}) is IMyConveyorSorter s) s.SetFilter(s.Mode, new List<MyInventoryItemFilter>()); }`,
+        ctx.next(node, 'Next'),
+      ],
+    }
+  },
+  AddConveyorSorterFilterItem: (node, ctx) => {
+    ctx.useHelper('GetBlock')
+    return {
+      kind: 'action',
+      statements: [
+        `{ if (GetBlock(${stringLiteral(prop(node, 'SorterName'))}) is IMyConveyorSorter s) s.AddItem(new MyInventoryItemFilter(${stringLiteral(prop(node, 'ItemId'))}, false)); }`,
+        ctx.next(node, 'Next'),
+      ],
+    }
+  },
+  RemoveConveyorSorterFilterItem: (node, ctx) => {
+    ctx.useHelper('GetBlock')
+    return {
+      kind: 'action',
+      statements: [
+        `{ if (GetBlock(${stringLiteral(prop(node, 'SorterName'))}) is IMyConveyorSorter s) s.RemoveItem(new MyInventoryItemFilter(${stringLiteral(prop(node, 'ItemId'))}, false)); }`,
+        ctx.next(node, 'Next'),
+      ],
+    }
+  },
+  IfConveyorSorterAllowsItem: blockCondition(
+    'IMyConveyorSorter',
+    (v, n) => `${v}.IsAllowed(MyDefinitionId.Parse(${stringLiteral(prop(n, 'ItemId'))}))`,
+    'SorterName',
+  ),
 
   // --- AI Blocks: enabled/apply-action/property access reuse the generic ------
   // terminal-property shapes (see module comment above).

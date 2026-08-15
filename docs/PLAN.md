@@ -5,12 +5,15 @@
 
 ## Status
 
-**Now working on Milestone 4 — Codegen, on branch `codegen-engine`.**
+**Milestone 4 — Codegen is feature-complete (PR #4, branch `codegen-engine`,
+awaiting review/merge).** All 345 node types now have real emitters (no TODO
+stubs); see `docs/codegen-api-notes.md` for the SE ModAPI research behind the
+`ExtendedBuiltin` emitters.
 
 - [x] Milestone 1 — Repo/pipeline skeleton (merged in #1)
 - [x] Milestone 2 — Data layer (merged in #2)
 - [x] Milestone 3 — Canvas (merged in #3)
-- [ ] Milestone 4 — Codegen
+- [x] Milestone 4 — Codegen (#4, open)
 - [ ] Milestone 5 — Minify
 - [ ] Milestone 6 — Persistence
 - [ ] Milestone 7 — Stretch (node packs, wizards)

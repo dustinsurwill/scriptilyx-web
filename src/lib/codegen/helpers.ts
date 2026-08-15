@@ -14,6 +14,28 @@ Dictionary<string, bool> _bool = new Dictionary<string, bool>();
 double GetNum(string k) => _num.TryGetValue(k, out var v) ? v : 0;
 string GetText(string k) => _text.TryGetValue(k, out var v) ? v : "";
 bool GetBool(string k) => _bool.TryGetValue(k, out var v) && v;`,
+  ApplyActionNamed: `void ApplyActionNamed(IMyTerminalBlock block, string contains) {
+    if (block == null) return;
+    var actions = new List<ITerminalAction>();
+    block.GetActions(actions);
+    foreach (var a in actions) {
+        if (a.Id.IndexOf(contains, StringComparison.OrdinalIgnoreCase) >= 0 || a.Name.ToString().IndexOf(contains, StringComparison.OrdinalIgnoreCase) >= 0) {
+            a.Apply(block);
+            return;
+        }
+    }
+}`,
+  GetItemAmount: `double GetItemAmount(IMyInventory inv, string itemType) {
+    if (inv == null) return 0;
+    var items = new List<MyInventoryItem>();
+    inv.GetItems(items);
+    double total = 0;
+    foreach (var item in items) {
+        string full = item.Type.TypeId + "/" + item.Type.SubtypeId;
+        if (full == itemType || item.Type.SubtypeId == itemType) total += (double)item.Amount;
+    }
+    return total;
+}`,
 }
 
 /** Helper ids implicitly required by another helper (dependency edges). */
