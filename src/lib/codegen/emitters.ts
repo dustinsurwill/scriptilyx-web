@@ -1,5 +1,6 @@
 import type { ScriptNode } from '../../types/graph'
-import type { NodeEmitter } from './types'
+import { interpolatedTextExpr } from './factories'
+import type { EmitContext, NodeEmitter } from './types'
 import { boolLiteral, numberLiteral, stringLiteral } from './format'
 
 function prop(node: ScriptNode, key: string): string {
@@ -145,26 +146,26 @@ function isWorkingCondition(negate = false): NodeEmitter {
 // LCD / text-panel writer, reused by every "write status to an LCD" node.
 // ---------------------------------------------------------------------------
 
-function lcdWrite(textExpr: (node: ScriptNode) => string, nameKey = 'BlockName'): NodeEmitter {
+function lcdWrite(textExpr: (node: ScriptNode, ctx: EmitContext) => string, nameKey = 'BlockName'): NodeEmitter {
   return (node, ctx) => {
     ctx.useHelper('GetBlock')
     return {
       kind: 'action',
       statements: [
-        `{ if (GetBlock(${stringLiteral(prop(node, nameKey))}) is IMyTextSurface v) v.WriteText(${textExpr(node)}); }`,
+        `{ if (GetBlock(${stringLiteral(prop(node, nameKey))}) is IMyTextSurface v) v.WriteText(${textExpr(node, ctx)}); }`,
         ctx.next(node, 'Next'),
       ],
     }
   }
 }
 
-function lcdGroupWrite(textExpr: (node: ScriptNode) => string): NodeEmitter {
+function lcdGroupWrite(textExpr: (node: ScriptNode, ctx: EmitContext) => string): NodeEmitter {
   return (node, ctx) => {
     ctx.useHelper('GetGroupBlocks')
     return {
       kind: 'action',
       statements: [
-        `foreach (var blk in GetGroupBlocks(${stringLiteral(prop(node, 'GroupName'))})) { if (blk is IMyTextSurface v) v.WriteText(${textExpr(node)}); }`,
+        `foreach (var blk in GetGroupBlocks(${stringLiteral(prop(node, 'GroupName'))})) { if (blk is IMyTextSurface v) v.WriteText(${textExpr(node, ctx)}); }`,
         ctx.next(node, 'Next'),
       ],
     }
@@ -222,8 +223,8 @@ export const genericEmitters: Record<string, NodeEmitter> = {
     (n) =>
       `new Color((int)${numberLiteral(prop(n, 'Red'))}, (int)${numberLiteral(prop(n, 'Green'))}, (int)${numberLiteral(prop(n, 'Blue'))})`,
   ),
-  SetLcdText: lcdWrite((n) => stringLiteral(prop(n, 'Text'))),
-  SetLcdGroupText: lcdGroupWrite((n) => stringLiteral(prop(n, 'Text'))),
+  SetLcdText: lcdWrite((n, ctx) => interpolatedTextExpr(n, ctx)),
+  SetLcdGroupText: lcdGroupWrite((n, ctx) => interpolatedTextExpr(n, ctx)),
   ConnectorConnect: blockMethodCall('IMyShipConnector', 'Connect'),
   ConnectorDisconnect: blockMethodCall('IMyShipConnector', 'Disconnect'),
 

@@ -56,7 +56,10 @@ describe('generateScript', () => {
     const connections = [wire(start, 'Next', check), wire(check, 'True', onTrue)]
 
     const { source } = generateScript(nodes, connections)
-    expect(source).toContain('if (GetNum("x") < 5)')
+    // Variable storage is promoted to a readable typed field, not a dictionary lookup.
+    expect(source).toContain('double Num_x;')
+    expect(source).toContain('if (Num_x < 5)')
+    expect(source).not.toContain('GetNum(')
     expect(source).toContain('// "False" not connected')
   })
 
@@ -85,7 +88,7 @@ describe('generateScript', () => {
     ]
 
     const { source } = generateScript(nodes, connections)
-    expect(source).toContain(`GetNum("__repeat_${repeat.Id}")`)
+    expect(source).toContain(`double Num_repeat_${repeat.Id};`)
     // The loop body's Next wire calls back into the repeat node's own method.
     expect(source).toMatch(new RegExp(`${methodName(repeat)}\\(\\);\\s*\\}`))
   })
@@ -170,5 +173,21 @@ describe('generateScript', () => {
     const { source } = generateScript(nodes, connections)
     expect(source).not.toContain('undefined')
     expect(source).toContain('Random _rng = new Random();')
+  })
+
+  it('promotes dictionary-backed variables to readable typed fields, shared across all referencing nodes', () => {
+    const start = node({ ActionType: 'Start' })
+    const set = node({ ActionType: 'SetNumberVariable', Properties: { Name: 'elevation', Value: '0' } })
+    const echo = node({ ActionType: 'Echo', Properties: { Text: 'Elevation: {elevation}' } })
+    const nodes = [start, set, echo]
+    const connections = [wire(start, 'Next', set), wire(set, 'Next', echo)]
+
+    const { source } = generateScript(nodes, connections)
+    expect(source).toContain('double Num_elevation;')
+    expect(source).toContain('Num_elevation = 0;')
+    expect(source).toContain('Echo($"Elevation: {Num_elevation}");')
+    expect(source).not.toContain('GetNum(')
+    expect(source).not.toContain('_num[')
+    expect(source).not.toContain('Dictionary<string, double>')
   })
 })

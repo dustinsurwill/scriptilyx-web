@@ -260,6 +260,33 @@
       "Preview": "{Name} \u002B= {AddValue}"
     },
     {
+      "Id": "var.calculate",
+      "Category": "\uD83D\uDD22 Variables",
+      "Title": "Calculate",
+      "Description": "Evaluates a formula using other number variables and stores the result. Supports + - * / ( ), and sqrt/abs/min/max/floor/ceil/round/sin/cos/tan/pow.",
+      "Search": "variable number formula calculate math expression",
+      "ActionType": "CalculateFormula",
+      "InputPorts": [
+        "In"
+      ],
+      "OutputPorts": [
+        "Next"
+      ],
+      "Properties": {
+        "Name": {
+          "Type": "text",
+          "DefaultValue": "myNumber",
+          "Options": []
+        },
+        "Formula": {
+          "Type": "text",
+          "DefaultValue": "a + b",
+          "Options": []
+        }
+      },
+      "Preview": "{Name} = {Formula}"
+    },
+    {
       "Id": "var.set_text",
       "Category": "\uD83D\uDD22 Variables",
       "Title": "Set Text Variable",

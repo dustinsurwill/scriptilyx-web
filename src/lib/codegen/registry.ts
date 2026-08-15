@@ -20,6 +20,7 @@ const controlFlowEmitters: Record<string, NodeEmitter> = {
   CustomCode: logic.customCodeEmitter,
   SetNumberVariable: logic.setNumberVariableEmitter,
   AddNumberVariable: logic.addNumberVariableEmitter,
+  CalculateFormula: logic.calculateEmitter,
   SetTextVariable: logic.setTextVariableEmitter,
   IfNumberLessThan: logic.ifNumberLessThanEmitter,
   IfNumberGreaterThan: logic.ifNumberGreaterThanEmitter,

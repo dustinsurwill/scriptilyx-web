@@ -1,4 +1,5 @@
 import type { ScriptNode } from '../../types/graph'
+import { interpolatedTextExpr } from './factories'
 import { sanitizeIdentifier, stringLiteral } from './format'
 import type { NodeEmitter } from './types'
 
@@ -43,7 +44,7 @@ export const runEverySecondsEmitter: NodeEmitter = (node, ctx) => {
 
 export const echoEmitter: NodeEmitter = (node, ctx) => ({
   kind: 'action',
-  statements: [`Echo(${stringLiteral(prop(node, 'Text'))});`, ctx.next(node, 'Next')],
+  statements: [`Echo(${interpolatedTextExpr(node, ctx)});`, ctx.next(node, 'Next')],
 })
 
 export const setRuntimeUpdateEmitter: NodeEmitter = (node, ctx) => ({
@@ -165,6 +166,52 @@ export const addNumberVariableEmitter: NodeEmitter = (node, ctx) => {
     kind: 'action',
     statements: [`_num[${name}] = GetNum(${name}) + (${prop(node, 'AddValue') || '0'});`, ctx.next(node, 'Next')],
   }
+}
+
+/** Maps a formula's bare-word function/constant names to their C# `Math.*`
+ * equivalent. Anything else that looks like an identifier is treated as a
+ * number-variable reference. */
+const FORMULA_FUNCTIONS: Record<string, string> = {
+  sqrt: 'Math.Sqrt',
+  abs: 'Math.Abs',
+  min: 'Math.Min',
+  max: 'Math.Max',
+  floor: 'Math.Floor',
+  ceil: 'Math.Ceiling',
+  round: 'Math.Round',
+  sin: 'Math.Sin',
+  cos: 'Math.Cos',
+  tan: 'Math.Tan',
+  pow: 'Math.Pow',
+  pi: 'Math.PI',
+}
+
+/** Only arithmetic, parens, commas, and identifiers/numbers are allowed — a
+ * Formula property feeds directly into generated C# source, so anything
+ * outside this charset (semicolons, braces, quotes...) must be rejected
+ * rather than passed through. */
+const SAFE_FORMULA = /^[A-Za-z0-9_\s+\-*/().,%]*$/
+
+function compileFormula(raw: string): { expr: string; safe: boolean } {
+  const trimmed = raw.trim()
+  if (!trimmed) return { expr: '0', safe: true }
+  if (!SAFE_FORMULA.test(trimmed)) return { expr: '0', safe: false }
+  const expr = trimmed.replace(
+    /[A-Za-z_][A-Za-z0-9_]*/g,
+    (ident) => FORMULA_FUNCTIONS[ident.toLowerCase()] ?? `GetNum(${stringLiteral(ident)})`,
+  )
+  return { expr, safe: true }
+}
+
+export const calculateEmitter: NodeEmitter = (node, ctx) => {
+  ctx.useHelper('Vars')
+  const formula = prop(node, 'Formula')
+  const { expr, safe } = compileFormula(formula)
+  const statements = safe
+    ? []
+    : [`// WARNING: formula ${stringLiteral(formula)} has unsupported characters; using 0`]
+  statements.push(`_num[${stringLiteral(prop(node, 'Name'))}] = ${expr};`, ctx.next(node, 'Next'))
+  return { kind: 'action', statements }
 }
 
 export const setTextVariableEmitter: NodeEmitter = (node, ctx) => {

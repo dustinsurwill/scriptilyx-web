@@ -1,6 +1,6 @@
 import type { ScriptNode } from '../../types/graph'
-import type { NodeEmitter } from './types'
-import { boolLiteral, stringLiteral } from './format'
+import type { EmitContext, NodeEmitter } from './types'
+import { boolLiteral, hasInterpolation, interpolatedStringLiteral, stringLiteral } from './format'
 
 // ---------------------------------------------------------------------------
 // Factories — each returns a NodeEmitter for a family of ActionTypes/node ids
@@ -115,6 +115,32 @@ export const enabledValue = (node: ScriptNode) => boolLiteral(prop(node, 'Enable
 export const lockedValue = (node: ScriptNode) => boolLiteral(prop(node, 'Locked'))
 
 // ---------------------------------------------------------------------------
+// Variable interpolation — lets any user-facing text field reference a
+// variable by writing "{myVar}" (or "{text:myVar}" / "{bool:myVar}" to pick
+// a type other than number). Shared by Echo and every LCD-text emitter.
+// ---------------------------------------------------------------------------
+
+/** Reads a `{kind:name}` or `{name}` (kind defaults to "num") interpolation
+ * hole and returns the C# read expression for it. */
+function resolveInterpolationHole(expr: string): string {
+  const match = /^(num|text|bool)\s*:\s*(.+)$/i.exec(expr.trim())
+  const kind = match ? match[1].toLowerCase() : 'num'
+  const name = (match ? match[2] : expr).trim()
+  const getter = kind === 'text' ? 'GetText' : kind === 'bool' ? 'GetBool' : 'GetNum'
+  return `${getter}(${stringLiteral(name)})`
+}
+
+/** Turns a `Text`-style property into a C# string expression: a plain
+ * literal if it has no `{...}` holes, otherwise a `$"..."` interpolated
+ * string that reads each referenced variable. */
+export function interpolatedTextExpr(node: ScriptNode, ctx: EmitContext, key = 'Text'): string {
+  const template = prop(node, key)
+  if (!hasInterpolation(template)) return stringLiteral(template)
+  ctx.useHelper('Vars')
+  return interpolatedStringLiteral(template, resolveInterpolationHole)
+}
+
+// ---------------------------------------------------------------------------
 // Generic terminal-block property access — works for every block/PB feature
 // registered in the terminal system (SE's ModAPI `GetValue<T>`/`SetValue<T>`/
 // `ApplyAction`), independent of whether a strongly-typed interface exists.
@@ -197,39 +223,39 @@ export function isWorkingCondition(negate = false, nameKey = 'BlockName'): NodeE
 // LCD / text-panel writer, reused by every "write status to an LCD" node.
 // ---------------------------------------------------------------------------
 
-export function lcdWrite(textExpr: (node: ScriptNode) => string, nameKey = 'BlockName'): NodeEmitter {
+export function lcdWrite(textExpr: (node: ScriptNode, ctx: EmitContext) => string, nameKey = 'BlockName'): NodeEmitter {
   return (node, ctx) => {
     ctx.useHelper('GetBlock')
     return {
       kind: 'action',
       statements: [
-        `{ if (GetBlock(${stringLiteral(prop(node, nameKey))}) is IMyTextSurface v) v.WriteText(${textExpr(node)}); }`,
+        `{ if (GetBlock(${stringLiteral(prop(node, nameKey))}) is IMyTextSurface v) v.WriteText(${textExpr(node, ctx)}); }`,
         ctx.next(node, 'Next'),
       ],
     }
   }
 }
 
-export function lcdAppend(textExpr: (node: ScriptNode) => string, nameKey = 'BlockName'): NodeEmitter {
+export function lcdAppend(textExpr: (node: ScriptNode, ctx: EmitContext) => string, nameKey = 'BlockName'): NodeEmitter {
   return (node, ctx) => {
     ctx.useHelper('GetBlock')
     return {
       kind: 'action',
       statements: [
-        `{ if (GetBlock(${stringLiteral(prop(node, nameKey))}) is IMyTextSurface v) v.WriteText(${textExpr(node)}, true); }`,
+        `{ if (GetBlock(${stringLiteral(prop(node, nameKey))}) is IMyTextSurface v) v.WriteText(${textExpr(node, ctx)}, true); }`,
         ctx.next(node, 'Next'),
       ],
     }
   }
 }
 
-export function lcdGroupWrite(textExpr: (node: ScriptNode) => string, append = false): NodeEmitter {
+export function lcdGroupWrite(textExpr: (node: ScriptNode, ctx: EmitContext) => string, append = false): NodeEmitter {
   return (node, ctx) => {
     ctx.useHelper('GetGroupBlocks')
     return {
       kind: 'action',
       statements: [
-        `foreach (var blk in GetGroupBlocks(${stringLiteral(prop(node, 'GroupName'))})) { if (blk is IMyTextSurface v) v.WriteText(${textExpr(node)}${append ? ', true' : ''}); }`,
+        `foreach (var blk in GetGroupBlocks(${stringLiteral(prop(node, 'GroupName'))})) { if (blk is IMyTextSurface v) v.WriteText(${textExpr(node, ctx)}${append ? ', true' : ''}); }`,
         ctx.next(node, 'Next'),
       ],
     }

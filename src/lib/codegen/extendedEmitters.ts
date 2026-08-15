@@ -7,6 +7,7 @@ import {
   enabledValue,
   groupCondition,
   groupMethodCall,
+  interpolatedTextExpr,
   isWorkingCondition,
   lcdAppend,
   lcdGroupWrite,
@@ -333,9 +334,9 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
   },
 
   // --- LCD ----------------------------------------------------------------
-  'ext.lcd.append': lcdAppend((n) => stringLiteral(prop(n, 'Text'))),
+  'ext.lcd.append': lcdAppend((n, ctx) => interpolatedTextExpr(n, ctx)),
   'ext.lcd.clear': lcdWrite(() => `""`),
-  'ext.lcd.group_append': lcdGroupWrite((n) => stringLiteral(prop(n, 'Text')), true),
+  'ext.lcd.group_append': lcdGroupWrite((n, ctx) => interpolatedTextExpr(n, ctx), true),
   'ext.lcd.progress_bar': (node, ctx) => {
     ctx.useHelper('GetBlock')
     ctx.useHelper('Vars')

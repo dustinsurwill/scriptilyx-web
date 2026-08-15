@@ -37,3 +37,44 @@ export function titleToIdentifier(title: string): string {
     .replace(/[^a-zA-Z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
 }
+
+/** True if `template` contains at least one `{...}` interpolation token. */
+export function hasInterpolation(template: string): boolean {
+  return /\{[^{}]+\}/.test(template)
+}
+
+/** Same escaping as stringLiteral, plus doubling braces (C# interpolated
+ * strings treat a lone { or } as the start/end of an expression hole). */
+function escapeInterpolatedSegment(text: string): string {
+  return text
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\r?\n/g, '\\n')
+    .replace(/\t/g, '\\t')
+    .replace(/\{/g, '{{')
+    .replace(/\}/g, '}}')
+}
+
+/** Builds a C# `$"..."` interpolated string literal from a template with
+ * `{expr}` holes; `resolveVar` turns each hole's inner text into the C#
+ * expression to splice in unescaped (e.g. a GetNum(...) call). */
+export function interpolatedStringLiteral(template: string, resolveVar: (expr: string) => string): string {
+  let out = ''
+  let i = 0
+  while (i < template.length) {
+    const start = template.indexOf('{', i)
+    if (start === -1) {
+      out += escapeInterpolatedSegment(template.slice(i))
+      break
+    }
+    out += escapeInterpolatedSegment(template.slice(i, start))
+    const end = template.indexOf('}', start)
+    if (end === -1) {
+      out += escapeInterpolatedSegment(template.slice(start))
+      break
+    }
+    out += `{${resolveVar(template.slice(start + 1, end))}}`
+    i = end + 1
+  }
+  return `$"${out}"`
+}
