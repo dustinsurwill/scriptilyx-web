@@ -6,8 +6,8 @@
 ## Status
 
 - [x] Milestone 1 — Repo/pipeline skeleton (merged in #1)
-- [ ] Milestone 2 — Data layer
-- [ ] Milestone 3 — Canvas
+- [x] Milestone 2 — Data layer (merged in #2)
+- [x] Milestone 3 — Canvas (#3)
 - [ ] Milestone 4 — Codegen
 - [ ] Milestone 5 — Minify
 - [ ] Milestone 6 — Persistence
