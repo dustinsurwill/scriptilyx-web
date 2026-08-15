@@ -3,6 +3,7 @@ import type { NodeDefinition } from '../types/graph'
 
 interface NodePaletteProps {
   nodeDefinitions: NodeDefinition[]
+  onAddNode: (definition: NodeDefinition) => void
 }
 
 function matchesQuery(node: NodeDefinition, query: string): boolean {
@@ -15,7 +16,7 @@ function matchesQuery(node: NodeDefinition, query: string): boolean {
   )
 }
 
-export function NodePalette({ nodeDefinitions }: NodePaletteProps) {
+export function NodePalette({ nodeDefinitions, onAddNode }: NodePaletteProps) {
   const [query, setQuery] = useState('')
 
   const grouped = useMemo(() => {
@@ -62,11 +63,13 @@ export function NodePalette({ nodeDefinitions }: NodePaletteProps) {
               {nodes.map((node) => (
                 <li
                   key={node.Id}
+                  data-testid="node-palette-item"
                   title={node.Description}
+                  onClick={() => onAddNode(node)}
                   style={{
                     padding: '4px 8px',
                     borderRadius: '4px',
-                    cursor: 'default',
+                    cursor: 'pointer',
                   }}
                 >
                   {node.Title}
