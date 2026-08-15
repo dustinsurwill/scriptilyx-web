@@ -1,13 +1,19 @@
 import type { NodeConnection, ScriptNode } from '../../types/graph'
 import { findStartNodes } from '../graph'
-import { sanitizeIdentifier, stringLiteral } from './format'
+import { stringLiteral, titleToIdentifier } from './format'
 import { findSectionStartNodes, sectionMethodName } from './logicEmitters'
 import { HELPER_SOURCE } from './helpers'
 import { resolveEmitter } from './registry'
 import type { CodegenOptions, EmitContext } from './types'
 
-function methodName(node: ScriptNode): string {
-  return sanitizeIdentifier('N', node.Id)
+/** node.Number is unique within a graph (assigned by an incrementing
+ * counter, see GraphState.NextNodeNumber), so "Step_<Number>_<Title>" is
+ * both readable and collision-free — unlike the old GUID-derived names,
+ * it also lets a reader match generated code back to the node's canvas
+ * badge (e.g. the "#6" shown on the node in the editor). */
+export function methodName(node: ScriptNode): string {
+  const title = titleToIdentifier(node.Title)
+  return title ? `Step_${node.Number}_${title}` : `Step_${node.Number}`
 }
 
 /** Every node reachable from Start by following wires, plus every
@@ -98,7 +104,7 @@ export function generateScript(
     }
   }
 
-  const bodies: { key: string; statements: string[] }[] = []
+  const bodies: { key: string; node: ScriptNode; statements: string[] }[] = []
   for (const node of reachable) {
     const ctx = makeContext()
     const emit = resolveEmitter(node)(node, ctx)
@@ -113,9 +119,9 @@ export function generateScript(
       const falseCall = tickBudget
         ? (targetKey(node, 'False') ? `_nextNode = ${stringLiteral(targetKey(node, 'False')!)};` : '_nextNode = null;')
         : (targetKey(node, 'False') ? `${targetKey(node, 'False')}();` : '// "False" not connected')
-      statements.push(`if (${emit.expression}) { ${trueCall} } else { ${falseCall} }`)
+      statements.push(`if (${emit.expression}) {`, `    ${trueCall}`, `} else {`, `    ${falseCall}`, `}`)
     }
-    bodies.push({ key: methodName(node), statements })
+    bodies.push({ key: methodName(node), node, statements })
   }
 
   const sectionAliases = [...sectionByName.entries()].map(([name, n]) => ({
@@ -158,7 +164,8 @@ export function generateScript(
   if (tickBudget) {
     lines.push(`void Dispatch() {`)
     lines.push(`    switch (_nextNode) {`)
-    for (const { key, statements } of bodies) {
+    for (const { key, node, statements } of bodies) {
+      lines.push(`        // #${node.Number} ${node.Title}`)
       lines.push(`        case ${stringLiteral(key)}: {`)
       for (const s of statements) lines.push(`            ${s}`)
       lines.push(`            break;`)
@@ -168,7 +175,8 @@ export function generateScript(
     lines.push(`    }`)
     lines.push(`}`)
   } else {
-    for (const { key, statements } of bodies) {
+    for (const { key, node, statements } of bodies) {
+      lines.push(`// #${node.Number} ${node.Title}`)
       lines.push(`void ${key}() {`)
       for (const s of statements) lines.push(`    ${s}`)
       lines.push(`}`)

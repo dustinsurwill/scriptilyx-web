@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NodeConnection, ScriptNode } from '../../types/graph'
-import { generateScript } from './generate'
+import { generateScript, methodName } from './generate'
 
 let counter = 0
 function node(partial: Partial<ScriptNode> & Pick<ScriptNode, 'ActionType'>): ScriptNode {
@@ -39,7 +39,9 @@ describe('generateScript', () => {
 
     const { source } = generateScript(nodes, connections)
     expect(source).toContain(`Echo("hi");`)
-    expect(source).toMatch(new RegExp(`void N_${start.Id}\\(\\) \\{\\s*N_${echo.Id}\\(\\);`))
+    expect(source).toMatch(
+      new RegExp(`void ${methodName(start)}\\(\\) \\{\\s*${methodName(echo)}\\(\\);`),
+    )
   })
 
   it('emits both branches of a condition node and skips unconnected ones', () => {
@@ -85,7 +87,7 @@ describe('generateScript', () => {
     const { source } = generateScript(nodes, connections)
     expect(source).toContain(`GetNum("__repeat_${repeat.Id}")`)
     // The loop body's Next wire calls back into the repeat node's own method.
-    expect(source).toMatch(new RegExp(`N_${repeat.Id}\\(\\);\\s*\\}`))
+    expect(source).toMatch(new RegExp(`${methodName(repeat)}\\(\\);\\s*\\}`))
   })
 
   it('routes CommandRouter by argument', () => {
@@ -115,7 +117,7 @@ describe('generateScript', () => {
     expect(source).toContain('void Dispatch()')
     expect(source).toContain('switch (_nextNode)')
     expect(source).toContain('int budget = 25;')
-    expect(source).not.toMatch(new RegExp(`void N_${start.Id}\\(\\)`))
+    expect(source).not.toMatch(new RegExp(`void ${methodName(start)}\\(\\)`))
   })
 
   it('resolves ExtendedBuiltin nodes by their node-library id', () => {

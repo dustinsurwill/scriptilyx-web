@@ -27,3 +27,13 @@ export function stringLiteral(raw: string | undefined): string {
 export function sanitizeIdentifier(prefix: string, id: string): string {
   return `${prefix}_${id.replace(/[^a-zA-Z0-9_]/g, '')}`
 }
+
+/** Turns a node Title (e.g. "If Number Less Than") into a readable method
+ * name fragment ("If_Number_Less_Than"), collapsing anything that isn't a
+ * word character into a single underscore. */
+export function titleToIdentifier(title: string): string {
+  return title
+    .trim()
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+}
