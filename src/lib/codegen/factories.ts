@@ -1,6 +1,6 @@
 import type { ScriptNode } from '../../types/graph'
 import type { EmitContext, NodeEmitter } from './types'
-import { boolLiteral, hasInterpolation, interpolatedStringLiteral, stringLiteral } from './format'
+import { boolLiteral, hasInterpolation, interpolatedStringLiteral, numberLiteral, stringLiteral } from './format'
 
 // ---------------------------------------------------------------------------
 // Factories — each returns a NodeEmitter for a family of ActionTypes/node ids
@@ -91,6 +91,29 @@ export function blockCondition(
     return {
       kind: 'condition',
       expression: `GetBlock(${stringLiteral(prop(node, nameKey))}) is ${iface} v && ${expr('v', node)}`,
+    }
+  }
+}
+
+/**
+ * Same shape as `blockCondition`, but for the merged Above|Below threshold
+ * nodes (battery/gas-tank/cargo/room-oxygen/ship-speed/jump-drive-charge/
+ * piston-position): the comparison operator comes from the node's own
+ * `Direction` combo property instead of being baked into a separate
+ * Above/Below node.
+ */
+export function blockThresholdCondition(
+  iface: string,
+  valueExpr: (varName: string) => string,
+  valueKey: string,
+  nameKey = 'BlockName',
+): NodeEmitter {
+  return (node, ctx) => {
+    ctx.useHelper('GetBlock')
+    const operator = prop(node, 'Direction') === 'Below' ? '<' : '>'
+    return {
+      kind: 'condition',
+      expression: `GetBlock(${stringLiteral(prop(node, nameKey))}) is ${iface} v && ${valueExpr('v')} ${operator} ${numberLiteral(prop(node, valueKey))}`,
     }
   }
 }

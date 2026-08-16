@@ -1,7 +1,8 @@
 // Auto-generated during the Milestone 7.2 native-catalog cleanup: maps node
 // ids retired from `nodeLibrary.json` (old on/off preset pairs, redundant
-// button-command presets) onto their replacement in the current catalog, so a
-// legacy `.segraph` opened here still resolves to a real node definition.
+// button-command presets, Above/Below threshold pairs, and Wheel boolean
+// on/off presets) onto their replacement in the current catalog, so a legacy
+// `.segraph` opened here still resolves to a real node definition.
 // See docs/PLAN.md -> "Native catalog cleanup" for the design rationale.
 export interface LegacyNodeRemap {
   newId: string
@@ -69,4 +70,28 @@ export const LEGACY_NODE_ID_REMAP: Record<string, LegacyNodeRemap> = {
   "button.command_startup": { newId: "button.command", properties: { "Argument": "startup" } },
   "button.command_dock": { newId: "button.command", properties: { "Argument": "dock" } },
   "button.command_mine": { newId: "button.command", properties: { "Argument": "mine" } },
+  "ext.piston.if_above": { newId: "ext.piston.threshold", properties: { "Direction": "Above" } },
+  "ext.piston.if_below": { newId: "ext.piston.threshold", properties: { "Direction": "Below" } },
+  "ext.tank.if_above": { newId: "ext.tank.threshold", properties: { "Direction": "Above" } },
+  "ext.tank.if_below": { newId: "ext.tank.threshold", properties: { "Direction": "Below" } },
+  "ext.vent.if_oxygen_above": { newId: "ext.vent.oxygen_threshold", properties: { "Direction": "Above" } },
+  "ext.vent.if_oxygen_below": { newId: "ext.vent.oxygen_threshold", properties: { "Direction": "Below" } },
+  "ext.battery.if_above": { newId: "ext.battery.threshold", properties: { "Direction": "Above" } },
+  "check.battery_below": { newId: "ext.battery.threshold", properties: { "Direction": "Below" } },
+  "ext.cargo.if_above": { newId: "ext.cargo.threshold", properties: { "Direction": "Above" } },
+  "check.cargo_below": { newId: "ext.cargo.threshold", properties: { "Direction": "Below" } },
+  "ext.ship.if_speed_above": { newId: "ext.ship.speed_threshold", properties: { "Direction": "Above" } },
+  "ext.ship.if_speed_below": { newId: "ext.ship.speed_threshold", properties: { "Direction": "Below" } },
+  "check.jump_drive_charge_above": { newId: "check.jump_drive_charge_threshold", properties: { "Direction": "Above" } },
+  "check.jump_drive_charge_below": { newId: "check.jump_drive_charge_threshold", properties: { "Direction": "Below" } },
+  "wheel.propulsion_on": { newId: "wheel.propulsion_set", properties: { "Value": "true" } },
+  "wheel.propulsion_off": { newId: "wheel.propulsion_set", properties: { "Value": "false" } },
+  "wheel.steering_on": { newId: "wheel.steering_set", properties: { "Value": "true" } },
+  "wheel.steering_off": { newId: "wheel.steering_set", properties: { "Value": "false" } },
+  "wheel.brake_on": { newId: "wheel.brake_set", properties: { "Value": "true" } },
+  "wheel.brake_off": { newId: "wheel.brake_set", properties: { "Value": "false" } },
+  "wheel.invert_steering_on": { newId: "wheel.invert_steering_set", properties: { "Value": "true" } },
+  "wheel.invert_steering_off": { newId: "wheel.invert_steering_set", properties: { "Value": "false" } },
+  "wheel.invert_propulsion_on": { newId: "wheel.invert_propulsion_set", properties: { "Value": "true" } },
+  "wheel.invert_propulsion_off": { newId: "wheel.invert_propulsion_set", properties: { "Value": "false" } },
 }

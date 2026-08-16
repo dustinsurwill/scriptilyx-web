@@ -66,6 +66,53 @@ describe('remapLegacyGraph', () => {
     expect(result.Nodes[0].Properties.Argument).toBe('dock')
   })
 
+  it('remaps a retired Above/Below threshold pair onto the merged Direction-combo node', () => {
+    const data: GraphSaveData = {
+      Nodes: [
+        legacyNode({
+          DefinitionId: 'ext.battery.if_above',
+          ActionType: 'ExtendedBuiltin',
+          Title: 'Battery Above %',
+          Properties: { BlockName: 'Battery', Percent: '75' },
+        }),
+        legacyNode({
+          Id: 'n2',
+          DefinitionId: 'check.battery_below',
+          ActionType: 'BatteryBelow',
+          Title: 'Battery Below %',
+          Properties: { BlockName: 'Battery', Percent: '20' },
+        }),
+      ],
+      Connections: [],
+      NextNodeNumber: 3,
+      Zoom: 1,
+    }
+    const result = remapLegacyGraph(data)
+    expect(result.Nodes[0].DefinitionId).toBe('ext.battery.threshold')
+    expect(result.Nodes[0].Properties).toEqual({ BlockName: 'Battery', Percent: '75', Direction: 'Above' })
+    expect(result.Nodes[1].DefinitionId).toBe('ext.battery.threshold')
+    expect(result.Nodes[1].Properties).toEqual({ BlockName: 'Battery', Percent: '20', Direction: 'Below' })
+  })
+
+  it('remaps a retired wheel bool on/off preset onto the merged PropertyId node', () => {
+    const data: GraphSaveData = {
+      Nodes: [
+        legacyNode({
+          DefinitionId: 'wheel.propulsion_off',
+          ActionType: 'SetTerminalBool',
+          Title: 'Wheel Propulsion Off',
+          Properties: { BlockName: 'Wheel', PropertyId: 'Propulsion' },
+        }),
+      ],
+      Connections: [],
+      NextNodeNumber: 2,
+      Zoom: 1,
+    }
+    const result = remapLegacyGraph(data)
+    expect(result.Nodes[0].DefinitionId).toBe('wheel.propulsion_set')
+    expect(result.Nodes[0].Properties).toEqual({ BlockName: 'Wheel', PropertyId: 'Propulsion', Value: 'false' })
+  })
+
   it('leaves nodes with a current or unknown DefinitionId untouched', () => {
     const data: GraphSaveData = {
       Nodes: [legacyNode({ DefinitionId: 'block.set_enabled', Title: 'Set Block Enabled' }), legacyNode({ Id: 'n2', DefinitionId: 'totally.unknown.id' })],

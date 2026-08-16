@@ -170,8 +170,6 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
   },
 
   // --- Piston -------------------------------------------------------------
-  'ext.piston.if_above': blockCondition('IMyPistonBase', (v, n) => `${v}.CurrentPosition > ${numberLiteral(prop(n, 'Meters'))}`),
-  'ext.piston.if_below': blockCondition('IMyPistonBase', (v, n) => `${v}.CurrentPosition < ${numberLiteral(prop(n, 'Meters'))}`),
   'ext.piston.if_extended': blockCondition('IMyPistonBase', (v) => `${v}.CurrentPosition >= ${v}.HighestPosition`),
   'ext.piston.if_retracted': blockCondition('IMyPistonBase', (v) => `${v}.CurrentPosition <= ${v}.LowestPosition`),
 
@@ -213,22 +211,14 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
   },
 
   // --- Gas tank ---------------------------------------------------------------
-  'ext.tank.if_above': blockCondition('IMyGasTank', (v, n) => `${v}.FilledRatio * 100.0 > ${numberLiteral(prop(n, 'Percent'))}`),
-  'ext.tank.if_below': blockCondition('IMyGasTank', (v, n) => `${v}.FilledRatio * 100.0 < ${numberLiteral(prop(n, 'Percent'))}`),
   'ext.tank.get_fill': getBlockMemberIntoVar('num', 'IMyGasTank', (v) => `${v}.FilledRatio * 100.0`),
 
   // --- Air vent -----------------------------------------------------------
   'ext.vent.if_pressurized': blockCondition('IMyAirVent', (v, n) => `${v}.GetOxygenLevel() * 100.0 >= ${numberLiteral(prop(n, 'Percent'))}`),
   'ext.vent.if_depressurized': blockCondition('IMyAirVent', (v, n) => `${v}.GetOxygenLevel() * 100.0 <= ${numberLiteral(prop(n, 'Percent'))}`),
-  'ext.vent.if_oxygen_above': blockCondition('IMyAirVent', (v, n) => `${v}.GetOxygenLevel() * 100.0 > ${numberLiteral(prop(n, 'Percent'))}`),
-  'ext.vent.if_oxygen_below': blockCondition('IMyAirVent', (v, n) => `${v}.GetOxygenLevel() * 100.0 < ${numberLiteral(prop(n, 'Percent'))}`),
   'ext.vent.get_oxygen': getBlockMemberIntoVar('num', 'IMyAirVent', (v) => `${v}.GetOxygenLevel() * 100.0`),
 
   // --- Battery ------------------------------------------------------------
-  'ext.battery.if_above': blockCondition(
-    'IMyBatteryBlock',
-    (v, n) => `${v}.CurrentStoredPower / ${v}.MaxStoredPower * 100.0 > ${numberLiteral(prop(n, 'Percent'))}`,
-  ),
   'ext.battery.get_charge': getBlockMemberIntoVar('num', 'IMyBatteryBlock', (v) => `${v}.CurrentStoredPower / ${v}.MaxStoredPower * 100.0`),
   'ext.battery.charge_router': (node, ctx) => {
     ctx.useHelper('GetBlock')
@@ -251,11 +241,6 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
   },
 
   // --- Cargo ----------------------------------------------------------------
-  'ext.cargo.if_above': blockCondition(
-    'IMyCargoContainer',
-    (v, n) =>
-      `(double)${v}.GetInventory(0).CurrentVolume / (double)${v}.GetInventory(0).MaxVolume * 100.0 > ${numberLiteral(prop(n, 'Percent'))}`,
-  ),
   'ext.cargo.get_fill': getBlockMemberIntoVar(
     'num',
     'IMyCargoContainer',
@@ -560,8 +545,6 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
 
   // --- Ship controller (cockpit / remote control) -----------------------------
   'ext.ship.get_speed': getBlockMemberIntoVar('num', 'IMyShipController', (v) => `${v}.GetShipSpeed()`),
-  'ext.ship.if_speed_above': blockCondition('IMyShipController', (v, n) => `${v}.GetShipSpeed() > ${numberLiteral(prop(n, 'Speed'))}`),
-  'ext.ship.if_speed_below': blockCondition('IMyShipController', (v, n) => `${v}.GetShipSpeed() < ${numberLiteral(prop(n, 'Speed'))}`),
   'ext.ship.get_mass': getBlockMemberIntoVar('num', 'IMyShipController', (v) => `${v}.CalculateShipMass().PhysicalMass`),
   'ext.ship.get_natural_gravity': getBlockMemberIntoVar('num', 'IMyShipController', (v) => `${v}.GetNaturalGravity().Length()`),
   'ext.ship.get_artificial_gravity': getBlockMemberIntoVar('num', 'IMyShipController', (v) => `${v}.GetArtificialGravity().Length()`),

@@ -82,6 +82,28 @@ function blockCondition(
   }
 }
 
+/**
+ * Same shape as `blockCondition`, but for the merged Above|Below threshold
+ * nodes (battery/gas-tank/cargo/room-oxygen/ship-speed/jump-drive-charge/
+ * piston-position): the comparison operator comes from the node's own
+ * `Direction` combo property instead of a separate Above/Below node.
+ */
+function blockThresholdCondition(
+  iface: string,
+  valueExpr: (varName: string) => string,
+  valueKey: string,
+  nameKey = 'BlockName',
+): NodeEmitter {
+  return (node, ctx) => {
+    ctx.useHelper('GetBlock')
+    const operator = prop(node, 'Direction') === 'Below' ? '<' : '>'
+    return {
+      kind: 'condition',
+      expression: `GetBlock(${stringLiteral(prop(node, nameKey))}) is ${iface} v && ${valueExpr('v')} ${operator} ${numberLiteral(prop(node, valueKey))}`,
+    }
+  }
+}
+
 const enabledValue = (node: ScriptNode) => boolLiteral(prop(node, 'Enabled'))
 const lockedValue = (node: ScriptNode) => boolLiteral(prop(node, 'Locked'))
 
@@ -384,26 +406,27 @@ export const genericEmitters: Record<string, NodeEmitter> = {
     'IMyJumpDrive',
     (v) => `${v}.Status == Sandbox.ModAPI.Ingame.MyJumpDriveStatus.Ready`,
   ),
-  IfJumpDriveChargeAbove: blockCondition(
-    'IMyJumpDrive',
-    (v, n) => `${v}.CurrentStoredPower / ${v}.MaxStoredPower * 100.0 > ${numberLiteral(prop(n, 'Percent'))}`,
-  ),
-  IfJumpDriveChargeBelow: blockCondition(
-    'IMyJumpDrive',
-    (v, n) => `${v}.CurrentStoredPower / ${v}.MaxStoredPower * 100.0 < ${numberLiteral(prop(n, 'Percent'))}`,
-  ),
-
   // --- Production / tools: on/off is SetBlockEnabled (registered once above) --
 
-  // --- Checks: battery / cargo ------------------------------------------------
-  BatteryBelow: blockCondition(
+  // --- Above|Below threshold checks (merged Milestone 7.2 pairs) --------------
+  PistonPositionThreshold: blockThresholdCondition('IMyPistonBase', (v) => `${v}.CurrentPosition`, 'Meters'),
+  GasTankThreshold: blockThresholdCondition('IMyGasTank', (v) => `${v}.FilledRatio * 100.0`, 'Percent'),
+  RoomOxygenThreshold: blockThresholdCondition('IMyAirVent', (v) => `${v}.GetOxygenLevel() * 100.0`, 'Percent'),
+  BatteryThreshold: blockThresholdCondition(
     'IMyBatteryBlock',
-    (v, n) => `${v}.CurrentStoredPower / ${v}.MaxStoredPower * 100.0 < ${numberLiteral(prop(n, 'Percent'))}`,
+    (v) => `${v}.CurrentStoredPower / ${v}.MaxStoredPower * 100.0`,
+    'Percent',
   ),
-  CargoPercentBelow: blockCondition(
+  CargoThreshold: blockThresholdCondition(
     'IMyCargoContainer',
-    (v, n) =>
-      `(double)${v}.GetInventory(0).CurrentVolume / (double)${v}.GetInventory(0).MaxVolume * 100.0 < ${numberLiteral(prop(n, 'Percent'))}`,
+    (v) => `(double)${v}.GetInventory(0).CurrentVolume / (double)${v}.GetInventory(0).MaxVolume * 100.0`,
+    'Percent',
+  ),
+  ShipSpeedThreshold: blockThresholdCondition('IMyShipController', (v) => `${v}.GetShipSpeed()`, 'Speed'),
+  JumpDriveChargeThreshold: blockThresholdCondition(
+    'IMyJumpDrive',
+    (v) => `${v}.CurrentStoredPower / ${v}.MaxStoredPower * 100.0`,
+    'Percent',
   ),
   IfDoorState: blockCondition('IMyDoor', (v, n) => `${v}.Status.ToString() == ${stringLiteral(prop(n, 'State'))}`),
   IfGroupBlockState: (node, ctx) => {

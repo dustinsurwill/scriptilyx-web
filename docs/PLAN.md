@@ -5,30 +5,40 @@
 
 ## Status
 
-**Milestone 7.2 in progress.** First slice landed: merged 22 redundant
-on/off preset pairs (`SetBlockEnabled`, `SetGroupEnabled`, `SetRotorEnabled`,
-etc. — see "Native catalog cleanup" below) into single `Enabled`-combo
-nodes, folded the AI-Block/Event-Controller preset pairs and the three
-`Button Command: <preset>` nodes into their existing generic equivalents,
-and added a general-purpose `Number Compare` node (`>`, `<`, `>=`, `<=`,
-`==`, `!=`) closing the missing-operator gap. Catalog: 346 → 310 node
-definitions. A `remapLegacyGraph()` importer (`src/lib/legacyImport.ts`,
-table-driven from `src/data/legacyNodeRemap.ts`) rewrites any of the 59
-retired ids onto their replacement — wired into both Open (`Toolbar.tsx`)
-and autosave restore (`graphStore.ts`) — so old `.segraph` files (including
-real desktop-app exports) keep working. Verified in-browser: retired-id
-`.segraph` opens with a working, correctly-wired replacement node and
-generates correct code.
+**Milestone 7.2 in progress.** Landed so far: merged 22 redundant on/off
+preset pairs (`SetBlockEnabled`, `SetGroupEnabled`, `SetRotorEnabled`, etc.)
+into single `Enabled`-combo nodes, folded the AI-Block/Event-Controller/
+Button-Command presets into their existing generic equivalents, added a
+general-purpose `Number Compare` node (`>`, `<`, `>=`, `<=`, `==`, `!=`),
+and merged the 7 **Above/Below threshold pairs** (Battery, Gas Tank, Cargo,
+Room Oxygen, Ship Speed, Jump Drive Charge, Piston Position) into single
+`Direction`-combo (`Above`/`Below`) nodes via a new `blockThresholdCondition`
+emitter factory — each family previously dispatched through a different
+codegen path (plain `ActionType`, `ExtendedBuiltin` id-keyed, or a one-off
+`ActionType` like `BatteryBelow`/`CargoPercentBelow`), now unified onto 7
+new dedicated `ActionType`s (`BatteryThreshold`, `GasTankThreshold`, etc.).
+Also investigated the **Set-\[Type\]-Property family**
+(`SetTerminalBool`/`SetTerminalFloat`, ~28 Wheel-specific presets): most of
+it (Float presets like `Wheel Set Power`/`Wheel Set Friction`, and the
+3-way Override presets) turned out to be genuinely distinct — each targets
+a different terminal property or has more than two states, so they're
+convenience shortcuts, not duplicates. But 5 of the Bool presets
+(`Wheel Propulsion/Steering/Brake/Invert Steering/Invert Propulsion
+On`+`Off`) *were* the exact same on/off-pair duplication as the Enabled
+family — merged those too. Catalog: 346 → 298 node definitions.
 
-Deferred within 7.2 (not yet started): the **Above/Below merges** (Battery,
-Gas Tank, Cargo, Room Oxygen, Ship Speed, Jump Drive Charge, Piston
-Position) — these are fragmented across three different codegen dispatch
-paths per family (plain `ActionType` emitters, `ExtendedBuiltin`
-id-keyed emitters, and one-off dedicated `ActionType`s like
-`CargoPercentBelow`/`BatteryBelow`), so unifying each into one
-`Above|Below`-combo node needs a real new emitter per family, not just a
-catalog edit — bigger/riskier than the mechanical preset-pair merges done
-so far. Tracked as follow-up work in this same milestone.
+A `remapLegacyGraph()` importer (`src/lib/legacyImport.ts`, table-driven
+from `src/data/legacyNodeRemap.ts`, 83 entries) rewrites any retired id
+onto its replacement — wired into both Open (`Toolbar.tsx`) and autosave
+restore (`graphStore.ts`) — so old `.segraph` files (including real
+desktop-app exports) keep working. Verified in-browser after each merge
+pass: a retired-id `.segraph` opens with a working, correctly-wired
+replacement node and generates correct code.
+
+Still open within 7.2: whether node properties (e.g. `SetBlockEnabled`'s
+`Enabled`) should be settable from a wired input instead of only a
+literal/combo default — see "Property-as-input" design note below; this is
+an architecture decision, not yet started.
 
 - [x] Milestone 1 — Repo/pipeline skeleton (merged in #1)
 - [x] Milestone 2 — Data layer (merged in #2)
@@ -38,8 +48,8 @@ so far. Tracked as follow-up work in this same milestone.
 - [x] Milestone 6 — Persistence (merged in #6)
 - [ ] Milestone 7.1 — Stretch: node packs, wizards
 - [ ] Milestone 7.2 — Stretch: cleaned-up native node catalog + `.segraph`
-      import (in progress — preset-pair merges + importer done, Above/Below
-      merges still open)
+      import (in progress — preset-pair + Above/Below merges and the
+      importer are done; property-as-input is still a design question)
 - [ ] Milestone 7.3 — Stretch: `.segraph` export (legacy-compatible), may end
       up documented-only
 
@@ -233,35 +243,79 @@ shipped in Milestone 2's data layer:
   palette discoverability — not collapsed across contexts). AI-Block and
   Event-Controller presets (which already had a generic combo node
   alongside their on/off pairs) had the presets deleted outright rather
-  than re-merged. 22 pair-merges + 12 preset deletions; see the Status
-  section above for the overall 346 → 310 catalog count.
+  than re-merged. The same duplication also turned up in the Wheel
+  category outside the `*Enabled` naming pattern — `Wheel Propulsion/
+  Steering/Brake/Invert Steering/Invert Propulsion On`+`Off` are
+  `SetTerminalBool` presets differing only in their `PropertyId`/`Value`
+  defaults, exactly like `SetBlockEnabled`'s pairs — merged those 5 pairs
+  the same way. The other ~23 Wheel presets (`Wheel Set Power`/`Friction`/
+  etc., and the 3-way Override presets) are each a genuinely different
+  terminal property, not duplicates, so those were left alone. See the
+  Status section above for the running catalog count.
 - **Missing comparison operators** ✅ done — added a general `Number
   Compare` node (`ActionType: NumberCompare`) with a full operator combo
   (`>`, `<`, `>=`, `<=`, `==`, `!=`); `If Number Greater/Less Than` are
   untouched (existing graphs keep working) rather than replaced.
-- **Above/Below pairs** — not yet done. Battery, Gas Tank, Cargo, Room
-  Oxygen, Ship Speed, Jump Drive Charge, and Piston Position each ship as
-  two nodes differing only in comparison direction. Unlike the Enabled
-  family these are fragmented across three different codegen dispatch
-  mechanisms per node (plain `ActionType` emitters, `ExtendedBuiltin`
-  id-keyed emitters, and one-off `ActionType`s like `CargoPercentBelow`/
-  `BatteryBelow`), so collapsing each pair into one `Above|Below`-combo
-  node needs a new unified emitter per family, not just a catalog edit —
-  left as follow-up work.
+- **Above/Below pairs** ✅ done — Battery, Gas Tank, Cargo, Room Oxygen,
+  Ship Speed, Jump Drive Charge, and Piston Position each shipped as two
+  nodes differing only in comparison direction, fragmented across three
+  different codegen dispatch mechanisms (plain `ActionType` emitters,
+  `ExtendedBuiltin` id-keyed emitters, one-off `ActionType`s like
+  `CargoPercentBelow`/`BatteryBelow`). Unified onto 7 new dedicated
+  `ActionType`s (`BatteryThreshold`, `GasTankThreshold`,
+  `RoomOxygenThreshold`, `CargoThreshold`, `ShipSpeedThreshold`,
+  `JumpDriveChargeThreshold`, `PistonPositionThreshold`), each using the
+  new `blockThresholdCondition` factory (`factories.ts`/`emitters.ts`)
+  that reads a `Direction: Above|Below` combo property instead of baking
+  the operator into a separate node.
 - **Preset-only duplicates** ✅ done — `Button Command: dock/mine/startup`
   deleted; their `Argument` values are preserved by the legacy importer as
   property overrides onto the plain `Button Command` node.
 - **Fused vs. composable duplication**: some measurements (e.g. battery
-  charge) ship both as a fused check (`Battery Below %`) *and* as a
-  composable primitive (`Get Battery Charge %` + a comparison) that does
-  the same thing. Keep the fused, single-node form as the canonical path
-  for simple threshold checks — per the `Above|Below` merge above, one
+  charge) ship both as a fused check (now `Battery Threshold`, after the
+  Above/Below merge above) *and* as a composable primitive (`Get Battery
+  Charge %` + a comparison) that does the same thing. Keep the fused,
+  single-node form as the canonical path for simple threshold checks — one
   node beats two wired together for the common case — and keep `Get X %`
   around only for cases that need the raw value for something else (LCD
   display, custom math). Importing a legacy fused-check node is then a
   1:1 relabel onto the merged node, not a graph rewrite; a rewrite is
   only needed for legacy nodes that have no fused equivalent at all in
-  the cleaned catalog.
+  the cleaned catalog. Not revisited further this pass — already true of
+  the current catalog, nothing left to merge here.
+
+### Property-as-input (design note, not started)
+
+Raised while working 7.2: right now every `NodeDefinition` property (e.g.
+`SetBlockEnabled`'s `Enabled`) is a literal baked in at graph-design time —
+there's no way to wire it from something computed elsewhere in the graph
+(a variable, a check's result, the PB argument). Two ways to get there,
+different cost:
+
+- **Data ports** — add a second port kind beyond today's pure
+  control-flow `Handle`s (`Next`/`True`/`False`/`In`), so e.g.
+  `SetBlockEnabled` gets a `Value` input handle wireable from a
+  `Get Bool Variable` node's output. Correct long-term shape (matches how
+  most node-graph tools do this) but a large change: React Flow node
+  component needs a second handle type, `NodeConnection`/the store need to
+  distinguish control vs. data edges, codegen needs to resolve a data edge
+  to an expression instead of a statement, and validation needs new rules
+  (data ports must resolve to exactly one source, no cycles).
+- **Interpolated property values** — keep properties as plain strings, but
+  let codegen recognize a reference syntax (e.g. `$myBoolVar`) in any
+  property value and emit `GetBool("myBoolVar")`/`GetNum(...)`/
+  `GetText(...)` instead of a literal. No new port/edge concept, no store
+  changes — just a codegen-side check in `prop()`/the emitters before they
+  literal-ize a value, plus a small UI affordance in `PropertyPanel` (a
+  "use variable" toggle next to the literal input). Much smaller, but it's
+  a convention layered on strings rather than a first-class graph
+  connection, so React Flow won't visually show the dependency as a wire.
+
+Recommendation: interpolated values first (small, low-risk, ships fast);
+data ports are the "if this turns out to matter a lot" upgrade later,
+since they're not mutually exclusive — the interpolation syntax could
+even be what an eventual data-port's codegen resolves to internally. Not
+started — needs a decision before either is built.
 
 ## Workflow
 

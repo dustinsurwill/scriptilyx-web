@@ -556,62 +556,6 @@
    "Preview": "{BlockName}.ApplyAction({ActionId})"
   },
   {
-   "Id": "check.battery_below",
-   "Category": "✅ Checks",
-   "Title": "Battery Below %",
-   "Description": "Checks if a battery is below a percentage.",
-   "Search": "battery below percent power",
-   "ActionType": "BatteryBelow",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Battery",
-     "Options": []
-    },
-    "Percent": {
-     "Type": "number",
-     "DefaultValue": "20",
-     "Options": []
-    }
-   },
-   "Preview": "Battery {BlockName} below {Percent}%"
-  },
-  {
-   "Id": "check.cargo_below",
-   "Category": "✅ Checks",
-   "Title": "Cargo Percent Below",
-   "Description": "Checks if cargo is below a percentage.",
-   "Search": "cargo inventory below percent",
-   "ActionType": "CargoPercentBelow",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Cargo Container",
-     "Options": []
-    },
-    "Percent": {
-     "Type": "number",
-     "DefaultValue": "90",
-     "Options": []
-    }
-   },
-   "Preview": "Cargo {BlockName} below {Percent}%"
-  },
-  {
    "Id": "block.door_open",
    "Category": "🚪 Doors / Lights / LCD / Connectors",
    "Title": "Door Open",
@@ -2193,62 +2137,6 @@
    "Preview": "If {BlockName} is ready"
   },
   {
-   "Id": "check.jump_drive_charge_above",
-   "Category": "✅ Checks",
-   "Title": "If Jump Drive Charge Above %",
-   "Description": "Checks whether jump drive charge is above a percent.",
-   "Search": "jump drive charge above percent check battery power",
-   "ActionType": "IfJumpDriveChargeAbove",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Jump Drive",
-     "Options": []
-    },
-    "Percent": {
-     "Type": "number",
-     "DefaultValue": "90",
-     "Options": []
-    }
-   },
-   "Preview": "If {BlockName} charge > {Percent}%"
-  },
-  {
-   "Id": "check.jump_drive_charge_below",
-   "Category": "✅ Checks",
-   "Title": "If Jump Drive Charge Below %",
-   "Description": "Checks whether jump drive charge is below a percent.",
-   "Search": "jump drive charge below percent check battery power",
-   "ActionType": "IfJumpDriveChargeBelow",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Jump Drive",
-     "Options": []
-    },
-    "Percent": {
-     "Type": "number",
-     "DefaultValue": "90",
-     "Options": []
-    }
-   },
-   "Preview": "If {BlockName} charge < {Percent}%"
-  },
-  {
    "Id": "power.jump_drive_status_lcd",
    "Category": "⚡ Power / Air / Utility",
    "Title": "Set Jump Drive Status LCD",
@@ -3434,356 +3322,6 @@
     }
    },
    "Preview": "Write {SorterName} status to {LcdName}"
-  },
-  {
-   "Id": "wheel.propulsion_on",
-   "Category": "🛞 Wheels / Suspension",
-   "Title": "Wheel Propulsion On",
-   "Description": "Enables propulsion directly through IMyMotorSuspension.Propulsion.",
-   "Search": "wheel propulsion drive motor on",
-   "ActionType": "SetTerminalBool",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "Next"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Wheel Suspension",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "Propulsion",
-     "Options": []
-    },
-    "Value": {
-     "Type": "combo",
-     "DefaultValue": "true",
-     "Options": [
-      "true",
-      "false"
-     ]
-    }
-   },
-   "Preview": "Wheel Propulsion On: {BlockName}"
-  },
-  {
-   "Id": "wheel.propulsion_off",
-   "Category": "🛞 Wheels / Suspension",
-   "Title": "Wheel Propulsion Off",
-   "Description": "Disables propulsion directly through IMyMotorSuspension.Propulsion.",
-   "Search": "wheel propulsion drive motor off",
-   "ActionType": "SetTerminalBool",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "Next"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Wheel Suspension",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "Propulsion",
-     "Options": []
-    },
-    "Value": {
-     "Type": "combo",
-     "DefaultValue": "false",
-     "Options": [
-      "true",
-      "false"
-     ]
-    }
-   },
-   "Preview": "Wheel Propulsion Off: {BlockName}"
-  },
-  {
-   "Id": "wheel.steering_on",
-   "Category": "🛞 Wheels / Suspension",
-   "Title": "Wheel Steering On",
-   "Description": "Enables steering directly through IMyMotorSuspension.Steering.",
-   "Search": "wheel steering steer on",
-   "ActionType": "SetTerminalBool",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "Next"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Wheel Suspension",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "Steering",
-     "Options": []
-    },
-    "Value": {
-     "Type": "combo",
-     "DefaultValue": "true",
-     "Options": [
-      "true",
-      "false"
-     ]
-    }
-   },
-   "Preview": "Wheel Steering On: {BlockName}"
-  },
-  {
-   "Id": "wheel.steering_off",
-   "Category": "🛞 Wheels / Suspension",
-   "Title": "Wheel Steering Off",
-   "Description": "Disables steering directly through IMyMotorSuspension.Steering.",
-   "Search": "wheel steering steer off",
-   "ActionType": "SetTerminalBool",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "Next"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Wheel Suspension",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "Steering",
-     "Options": []
-    },
-    "Value": {
-     "Type": "combo",
-     "DefaultValue": "false",
-     "Options": [
-      "true",
-      "false"
-     ]
-    }
-   },
-   "Preview": "Wheel Steering Off: {BlockName}"
-  },
-  {
-   "Id": "wheel.brake_on",
-   "Category": "🛞 Wheels / Suspension",
-   "Title": "Wheel Brake On",
-   "Description": "Applies the wheel brake directly through IMyMotorSuspension.Brake. This is the individual wheel brake, not the cockpit parking-brake command.",
-   "Search": "wheel brake handbrake parking brake on",
-   "ActionType": "SetTerminalBool",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "Next"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Wheel Suspension",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "Brake",
-     "Options": []
-    },
-    "Value": {
-     "Type": "combo",
-     "DefaultValue": "true",
-     "Options": [
-      "true",
-      "false"
-     ]
-    }
-   },
-   "Preview": "Wheel Brake On: {BlockName}"
-  },
-  {
-   "Id": "wheel.brake_off",
-   "Category": "🛞 Wheels / Suspension",
-   "Title": "Wheel Brake Off",
-   "Description": "Releases the wheel brake directly through IMyMotorSuspension.Brake.",
-   "Search": "wheel brake handbrake parking brake off",
-   "ActionType": "SetTerminalBool",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "Next"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Wheel Suspension",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "Brake",
-     "Options": []
-    },
-    "Value": {
-     "Type": "combo",
-     "DefaultValue": "false",
-     "Options": [
-      "true",
-      "false"
-     ]
-    }
-   },
-   "Preview": "Wheel Brake Off: {BlockName}"
-  },
-  {
-   "Id": "wheel.invert_steering_on",
-   "Category": "🛞 Wheels / Suspension",
-   "Title": "Wheel Invert Steering On",
-   "Description": "Enables inverted steering directly through IMyMotorSuspension.InvertSteer.",
-   "Search": "wheel invert steering on",
-   "ActionType": "SetTerminalBool",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "Next"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Wheel Suspension",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "InvertSteer",
-     "Options": []
-    },
-    "Value": {
-     "Type": "combo",
-     "DefaultValue": "true",
-     "Options": [
-      "true",
-      "false"
-     ]
-    }
-   },
-   "Preview": "Wheel Invert Steering On: {BlockName}"
-  },
-  {
-   "Id": "wheel.invert_steering_off",
-   "Category": "🛞 Wheels / Suspension",
-   "Title": "Wheel Invert Steering Off",
-   "Description": "Disables inverted steering directly through IMyMotorSuspension.InvertSteer.",
-   "Search": "wheel invert steering off",
-   "ActionType": "SetTerminalBool",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "Next"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Wheel Suspension",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "InvertSteer",
-     "Options": []
-    },
-    "Value": {
-     "Type": "combo",
-     "DefaultValue": "false",
-     "Options": [
-      "true",
-      "false"
-     ]
-    }
-   },
-   "Preview": "Wheel Invert Steering Off: {BlockName}"
-  },
-  {
-   "Id": "wheel.invert_propulsion_on",
-   "Category": "🛞 Wheels / Suspension",
-   "Title": "Wheel Invert Propulsion On",
-   "Description": "Enables inverted propulsion directly through IMyMotorSuspension.InvertPropulsion.",
-   "Search": "wheel invert propulsion on",
-   "ActionType": "SetTerminalBool",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "Next"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Wheel Suspension",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "InvertPropulsion",
-     "Options": []
-    },
-    "Value": {
-     "Type": "combo",
-     "DefaultValue": "true",
-     "Options": [
-      "true",
-      "false"
-     ]
-    }
-   },
-   "Preview": "Wheel Invert Propulsion On: {BlockName}"
-  },
-  {
-   "Id": "wheel.invert_propulsion_off",
-   "Category": "🛞 Wheels / Suspension",
-   "Title": "Wheel Invert Propulsion Off",
-   "Description": "Disables inverted propulsion directly through IMyMotorSuspension.InvertPropulsion.",
-   "Search": "wheel invert propulsion off",
-   "ActionType": "SetTerminalBool",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "Next"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Wheel Suspension",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "InvertPropulsion",
-     "Options": []
-    },
-    "Value": {
-     "Type": "combo",
-     "DefaultValue": "false",
-     "Options": [
-      "true",
-      "false"
-     ]
-    }
-   },
-   "Preview": "Wheel Invert Propulsion Off: {BlockName}"
   },
   {
    "Id": "wheel.power",
@@ -4992,62 +4530,6 @@
    "Preview": "{ProjectorName} progress -> {LcdName}"
   },
   {
-   "Id": "ext.piston.if_above",
-   "Category": "✅ Checks",
-   "Title": "If Piston Position Above",
-   "Description": "Checks piston CurrentPosition in meters.",
-   "Search": "piston current position above meters",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Piston",
-     "Options": []
-    },
-    "Meters": {
-     "Type": "number",
-     "DefaultValue": "5",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName} position > {Meters} m"
-  },
-  {
-   "Id": "ext.piston.if_below",
-   "Category": "✅ Checks",
-   "Title": "If Piston Position Below",
-   "Description": "Checks piston CurrentPosition in meters.",
-   "Search": "piston current position below meters",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Piston",
-     "Options": []
-    },
-    "Meters": {
-     "Type": "number",
-     "DefaultValue": "5",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName} position < {Meters} m"
-  },
-  {
    "Id": "ext.piston.if_extended",
    "Category": "✅ Checks",
    "Title": "If Piston Fully Extended",
@@ -5378,62 +4860,6 @@
    "Preview": "Connector status: {BlockName}"
   },
   {
-   "Id": "ext.tank.if_above",
-   "Category": "✅ Checks",
-   "Title": "If Gas Tank Above %",
-   "Description": "Checks tank FilledRatio above a percentage.",
-   "Search": "gas hydrogen oxygen tank fill above percent",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Gas Tank",
-     "Options": []
-    },
-    "Percent": {
-     "Type": "number",
-     "DefaultValue": "90",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName} > {Percent}%"
-  },
-  {
-   "Id": "ext.tank.if_below",
-   "Category": "✅ Checks",
-   "Title": "If Gas Tank Below %",
-   "Description": "Checks tank FilledRatio below a percentage.",
-   "Search": "gas hydrogen oxygen tank fill below percent",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Gas Tank",
-     "Options": []
-    },
-    "Percent": {
-     "Type": "number",
-     "DefaultValue": "20",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName} < {Percent}%"
-  },
-  {
    "Id": "ext.tank.get_fill",
    "Category": "⚡ Power / Air / Utility",
    "Title": "Get Gas Tank Fill %",
@@ -5517,62 +4943,6 @@
    "Preview": "{BlockName} depressurized <= {Percent}%"
   },
   {
-   "Id": "ext.vent.if_oxygen_above",
-   "Category": "✅ Checks",
-   "Title": "If Oxygen Level Above %",
-   "Description": "Checks an air vent room oxygen level above a percentage.",
-   "Search": "air vent oxygen above percent",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Air Vent",
-     "Options": []
-    },
-    "Percent": {
-     "Type": "number",
-     "DefaultValue": "95",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName} oxygen > {Percent}%"
-  },
-  {
-   "Id": "ext.vent.if_oxygen_below",
-   "Category": "✅ Checks",
-   "Title": "If Oxygen Level Below %",
-   "Description": "Checks an air vent room oxygen level below a percentage.",
-   "Search": "air vent oxygen below percent",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Air Vent",
-     "Options": []
-    },
-    "Percent": {
-     "Type": "number",
-     "DefaultValue": "5",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName} oxygen < {Percent}%"
-  },
-  {
    "Id": "ext.vent.get_oxygen",
    "Category": "⚡ Power / Air / Utility",
    "Title": "Get Room Oxygen %",
@@ -5598,34 +4968,6 @@
     }
    },
    "Preview": "{BlockName} oxygen -> {VariableName}"
-  },
-  {
-   "Id": "ext.battery.if_above",
-   "Category": "✅ Checks",
-   "Title": "Battery Above %",
-   "Description": "Checks battery stored power above a percentage.",
-   "Search": "battery power charge above percent",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Battery",
-     "Options": []
-    },
-    "Percent": {
-     "Type": "number",
-     "DefaultValue": "90",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName} > {Percent}%"
   },
   {
    "Id": "ext.battery.get_charge",
@@ -5693,34 +5035,6 @@
     }
    },
    "Preview": "Battery status: {BlockName}"
-  },
-  {
-   "Id": "ext.cargo.if_above",
-   "Category": "✅ Checks",
-   "Title": "Cargo Percent Above",
-   "Description": "Checks inventory fill percentage above a threshold.",
-   "Search": "cargo inventory above percent full",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Cargo Container",
-     "Options": []
-    },
-    "Percent": {
-     "Type": "number",
-     "DefaultValue": "90",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName} cargo > {Percent}%"
   },
   {
    "Id": "ext.cargo.get_fill",
@@ -6969,62 +6283,6 @@
     }
    },
    "Preview": "{BlockName} speed -> {VariableName}"
-  },
-  {
-   "Id": "ext.ship.if_speed_above",
-   "Category": "✅ Checks",
-   "Title": "If Ship Speed Above",
-   "Description": "Checks ship speed in meters per second.",
-   "Search": "ship speed above mps",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Cockpit",
-     "Options": []
-    },
-    "Speed": {
-     "Type": "number",
-     "DefaultValue": "10",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName} speed > {Speed}"
-  },
-  {
-   "Id": "ext.ship.if_speed_below",
-   "Category": "✅ Checks",
-   "Title": "If Ship Speed Below",
-   "Description": "Checks ship speed in meters per second.",
-   "Search": "ship speed below mps",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Cockpit",
-     "Options": []
-    },
-    "Speed": {
-     "Type": "number",
-     "DefaultValue": "2",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName} speed < {Speed}"
   },
   {
    "Id": "ext.ship.get_mass",
@@ -8741,6 +7999,433 @@
     }
    },
    "Preview": "{Name} {Operator} {Value}"
+  },
+  {
+   "Id": "ext.piston.threshold",
+   "Category": "✅ Checks",
+   "Title": "Piston Position Threshold",
+   "Description": "Checks piston CurrentPosition against a threshold in meters.",
+   "Search": "piston current position above below meters threshold",
+   "ActionType": "PistonPositionThreshold",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Piston",
+     "Options": []
+    },
+    "Direction": {
+     "Type": "combo",
+     "DefaultValue": "Above",
+     "Options": [
+      "Above",
+      "Below"
+     ]
+    },
+    "Meters": {
+     "Type": "number",
+     "DefaultValue": "5",
+     "Options": []
+    }
+   },
+   "Preview": "{BlockName} {Meters} ({Direction})"
+  },
+  {
+   "Id": "ext.tank.threshold",
+   "Category": "✅ Checks",
+   "Title": "Gas Tank Threshold",
+   "Description": "Checks tank FilledRatio against a percentage threshold.",
+   "Search": "gas hydrogen oxygen tank fill above below percent threshold",
+   "ActionType": "GasTankThreshold",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Gas Tank",
+     "Options": []
+    },
+    "Direction": {
+     "Type": "combo",
+     "DefaultValue": "Above",
+     "Options": [
+      "Above",
+      "Below"
+     ]
+    },
+    "Percent": {
+     "Type": "number",
+     "DefaultValue": "90",
+     "Options": []
+    }
+   },
+   "Preview": "{BlockName} {Percent} ({Direction})"
+  },
+  {
+   "Id": "ext.vent.oxygen_threshold",
+   "Category": "✅ Checks",
+   "Title": "Room Oxygen Threshold",
+   "Description": "Checks an air vent room oxygen level against a percentage threshold.",
+   "Search": "air vent oxygen above below percent threshold",
+   "ActionType": "RoomOxygenThreshold",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Air Vent",
+     "Options": []
+    },
+    "Direction": {
+     "Type": "combo",
+     "DefaultValue": "Above",
+     "Options": [
+      "Above",
+      "Below"
+     ]
+    },
+    "Percent": {
+     "Type": "number",
+     "DefaultValue": "95",
+     "Options": []
+    }
+   },
+   "Preview": "{BlockName} {Percent} ({Direction})"
+  },
+  {
+   "Id": "ext.battery.threshold",
+   "Category": "✅ Checks",
+   "Title": "Battery Threshold",
+   "Description": "Checks battery stored power against a percentage threshold.",
+   "Search": "battery power charge above below percent threshold",
+   "ActionType": "BatteryThreshold",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Battery",
+     "Options": []
+    },
+    "Direction": {
+     "Type": "combo",
+     "DefaultValue": "Above",
+     "Options": [
+      "Above",
+      "Below"
+     ]
+    },
+    "Percent": {
+     "Type": "number",
+     "DefaultValue": "90",
+     "Options": []
+    }
+   },
+   "Preview": "{BlockName} {Percent} ({Direction})"
+  },
+  {
+   "Id": "ext.cargo.threshold",
+   "Category": "✅ Checks",
+   "Title": "Cargo Threshold",
+   "Description": "Checks inventory fill percentage against a threshold.",
+   "Search": "cargo inventory above below percent full threshold",
+   "ActionType": "CargoThreshold",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Cargo Container",
+     "Options": []
+    },
+    "Direction": {
+     "Type": "combo",
+     "DefaultValue": "Above",
+     "Options": [
+      "Above",
+      "Below"
+     ]
+    },
+    "Percent": {
+     "Type": "number",
+     "DefaultValue": "90",
+     "Options": []
+    }
+   },
+   "Preview": "{BlockName} {Percent} ({Direction})"
+  },
+  {
+   "Id": "ext.ship.speed_threshold",
+   "Category": "✅ Checks",
+   "Title": "Ship Speed Threshold",
+   "Description": "Checks ship speed in meters per second against a threshold.",
+   "Search": "ship speed above below mps threshold",
+   "ActionType": "ShipSpeedThreshold",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Cockpit",
+     "Options": []
+    },
+    "Direction": {
+     "Type": "combo",
+     "DefaultValue": "Above",
+     "Options": [
+      "Above",
+      "Below"
+     ]
+    },
+    "Speed": {
+     "Type": "number",
+     "DefaultValue": "10",
+     "Options": []
+    }
+   },
+   "Preview": "{BlockName} {Speed} ({Direction})"
+  },
+  {
+   "Id": "check.jump_drive_charge_threshold",
+   "Category": "✅ Checks",
+   "Title": "Jump Drive Charge Threshold",
+   "Description": "Checks jump drive charge against a percentage threshold.",
+   "Search": "jump drive charge above below percent check battery power threshold",
+   "ActionType": "JumpDriveChargeThreshold",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Jump Drive",
+     "Options": []
+    },
+    "Direction": {
+     "Type": "combo",
+     "DefaultValue": "Above",
+     "Options": [
+      "Above",
+      "Below"
+     ]
+    },
+    "Percent": {
+     "Type": "number",
+     "DefaultValue": "90",
+     "Options": []
+    }
+   },
+   "Preview": "{BlockName} {Percent} ({Direction})"
+  },
+  {
+   "Id": "wheel.propulsion_set",
+   "Category": "🛞 Wheels / Suspension",
+   "Title": "Wheel Propulsion Enabled",
+   "Description": "Enables or disables propulsion directly through IMyMotorSuspension.Propulsion.",
+   "Search": "wheel propulsion drive motor on off enable disable",
+   "ActionType": "SetTerminalBool",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "Next"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Wheel Suspension",
+     "Options": []
+    },
+    "PropertyId": {
+     "Type": "text",
+     "DefaultValue": "Propulsion",
+     "Options": []
+    },
+    "Value": {
+     "Type": "combo",
+     "DefaultValue": "true",
+     "Options": [
+      "true",
+      "false"
+     ]
+    }
+   },
+   "Preview": "Wheel {BlockName}.{PropertyId} = {Value}"
+  },
+  {
+   "Id": "wheel.steering_set",
+   "Category": "🛞 Wheels / Suspension",
+   "Title": "Wheel Steering Enabled",
+   "Description": "Enables or disables steering through IMyMotorSuspension.Steering.",
+   "Search": "wheel steering on off enable disable",
+   "ActionType": "SetTerminalBool",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "Next"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Wheel Suspension",
+     "Options": []
+    },
+    "PropertyId": {
+     "Type": "text",
+     "DefaultValue": "Steering",
+     "Options": []
+    },
+    "Value": {
+     "Type": "combo",
+     "DefaultValue": "true",
+     "Options": [
+      "true",
+      "false"
+     ]
+    }
+   },
+   "Preview": "Wheel {BlockName}.{PropertyId} = {Value}"
+  },
+  {
+   "Id": "wheel.brake_set",
+   "Category": "🛞 Wheels / Suspension",
+   "Title": "Wheel Brake Enabled",
+   "Description": "Engages or releases the wheel brake through IMyMotorSuspension.Brake.",
+   "Search": "wheel brake on off enable disable",
+   "ActionType": "SetTerminalBool",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "Next"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Wheel Suspension",
+     "Options": []
+    },
+    "PropertyId": {
+     "Type": "text",
+     "DefaultValue": "Brake",
+     "Options": []
+    },
+    "Value": {
+     "Type": "combo",
+     "DefaultValue": "true",
+     "Options": [
+      "true",
+      "false"
+     ]
+    }
+   },
+   "Preview": "Wheel {BlockName}.{PropertyId} = {Value}"
+  },
+  {
+   "Id": "wheel.invert_steering_set",
+   "Category": "🛞 Wheels / Suspension",
+   "Title": "Wheel Invert Steering",
+   "Description": "Inverts or restores steering direction through IMyMotorSuspension.InvertSteer.",
+   "Search": "wheel invert steering on off",
+   "ActionType": "SetTerminalBool",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "Next"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Wheel Suspension",
+     "Options": []
+    },
+    "PropertyId": {
+     "Type": "text",
+     "DefaultValue": "InvertSteer",
+     "Options": []
+    },
+    "Value": {
+     "Type": "combo",
+     "DefaultValue": "true",
+     "Options": [
+      "true",
+      "false"
+     ]
+    }
+   },
+   "Preview": "Wheel {BlockName}.{PropertyId} = {Value}"
+  },
+  {
+   "Id": "wheel.invert_propulsion_set",
+   "Category": "🛞 Wheels / Suspension",
+   "Title": "Wheel Invert Propulsion",
+   "Description": "Inverts or restores propulsion direction through IMyMotorSuspension.InvertPropulsion.",
+   "Search": "wheel invert propulsion on off",
+   "ActionType": "SetTerminalBool",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "Next"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Wheel Suspension",
+     "Options": []
+    },
+    "PropertyId": {
+     "Type": "text",
+     "DefaultValue": "InvertPropulsion",
+     "Options": []
+    },
+    "Value": {
+     "Type": "combo",
+     "DefaultValue": "true",
+     "Options": [
+      "true",
+      "false"
+     ]
+    }
+   },
+   "Preview": "Wheel {BlockName}.{PropertyId} = {Value}"
   }
  ]
 }
