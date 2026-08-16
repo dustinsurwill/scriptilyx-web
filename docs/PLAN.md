@@ -87,6 +87,35 @@ not started — flagged as the place to revisit if a node needs more than
 one variable input at once (interpolation only covers "this whole
 property is a variable", not wiring multiple inputs into one node).
 
+**Follow-up fixes/merges on top of the registry work**: the
+`VariablePicker` dropdown now takes a `kinds` filter so a bool-only field
+(Enabled/Locked) only lists bool variables and a number field only lists
+number variables — it was showing all three kinds regardless of what the
+field could actually use. While fixing that, found the `{ }`
+variable-reference toggle was showing on *every* combo property, including
+non-boolean ones like `Operator`/`Direction` — those are read as raw
+literals compared against known option strings (never through
+`resolvableBool`), so a `{name}` there would've silently failed to match
+and fallen back to that emitter's default. Now gated to combo properties
+whose `Options` are exactly `["true","false"]`.
+
+Also merged three more catalog duplicates in the same on-going cleanup:
+`Add`/`Subtract`/`Multiply`/`Divide Number Variable` → one **Number Math**
+node (`Name`, `Operator: +|-|*|/`, `Value` — Divide keeps its
+divide-by-zero guard), and **Number Equals** → folded into **Number
+Compare** by adding a `Tolerance` property used only for `==`/`!=`
+(defaults to `0`, i.e. exact equality, so old graphs/tests are unaffected).
+Added a genuinely new node, **Append Text Variable** (`Name += Value`),
+since there wasn't one — `Set Text Variable`'s `Value` didn't even support
+`{name}` interpolation before this (now fixed, via `interpolatedTextExpr`),
+so appending text required manually referencing a variable's own name
+inside its own Set node, which is exactly the "unclear" workaround style
+this ships a real node for instead. Catalog: 298 → 295 (4 nodes removed
+for 1 Number Math + Tolerance-fold, +1 for Append Text Variable). Legacy
+importer gained `renameProperties` support (`AddNumberVariable`'s
+`AddValue` → Number Math's `Value`) since this was the first merge where
+the old and new property key names actually differ.
+
 - [x] Milestone 1 — Repo/pipeline skeleton (merged in #1)
 - [x] Milestone 2 — Data layer (merged in #2)
 - [x] Milestone 3 — Canvas (merged in #3)

@@ -11,24 +11,8 @@ function emit(id: string, properties: Record<string, string> = {}) {
 describe('extendedEmitters coverage', () => {
   it('every table entry is a callable function', () => {
     const ids = Object.keys(extendedEmitters)
-    expect(ids.length).toBeGreaterThan(120)
+    expect(ids.length).toBeGreaterThan(115)
     for (const id of ids) expect(typeof extendedEmitters[id]).toBe('function')
-  })
-})
-
-describe('ext.var.divide', () => {
-  it('guards against division by zero instead of emitting one', () => {
-    const { emit: e } = emit('ext.var.divide', { Name: 'x', Value: '0' })
-    expect(e.kind).toBe('raw')
-    const statements = statementsOf(e)
-    expect(statements[0]).toContain('if ((0) == 0)')
-    expect(statements[0]).toContain('Echo("Divide by zero:')
-    expect(statements[1]).toContain('_num["x"] = GetNum("x") / (0);')
-  })
-
-  it('divides normally for a non-zero divisor', () => {
-    const { emit: e } = emit('ext.var.divide', { Name: 'x', Value: '4' })
-    expect(statementsOf(e)[1]).toContain('GetNum("x") / (4)')
   })
 })
 

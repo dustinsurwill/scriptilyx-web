@@ -1,13 +1,18 @@
 // Auto-generated during the Milestone 7.2 native-catalog cleanup: maps node
 // ids retired from `nodeLibrary.json` (old on/off preset pairs, redundant
-// button-command presets, Above/Below threshold pairs, and Wheel boolean
-// on/off presets) onto their replacement in the current catalog, so a legacy
-// `.segraph` opened here still resolves to a real node definition.
+// button-command presets, Above/Below threshold pairs, Wheel boolean on/off
+// presets, and the Add/Subtract/Multiply/Divide/Equals number-variable nodes)
+// onto their replacement in the current catalog, so a legacy `.segraph` opened
+// here still resolves to a real node definition.
 // See docs/PLAN.md -> "Native catalog cleanup" for the design rationale.
 export interface LegacyNodeRemap {
   newId: string
   /** Property overrides to apply on top of the legacy node's own saved properties. */
   properties: Record<string, string>
+  /** Old property key -> new property key, applied before `properties`, for a
+   * retired node whose replacement renamed the value (e.g. AddNumberVariable's
+   * "AddValue" -> Number Math's "Value"). */
+  renameProperties?: Record<string, string>
 }
 
 export const LEGACY_NODE_ID_REMAP: Record<string, LegacyNodeRemap> = {
@@ -94,4 +99,9 @@ export const LEGACY_NODE_ID_REMAP: Record<string, LegacyNodeRemap> = {
   "wheel.invert_steering_off": { newId: "wheel.invert_steering_set", properties: { "Value": "false" } },
   "wheel.invert_propulsion_on": { newId: "wheel.invert_propulsion_set", properties: { "Value": "true" } },
   "wheel.invert_propulsion_off": { newId: "wheel.invert_propulsion_set", properties: { "Value": "false" } },
+  "var.add_number": { newId: "var.number_math", properties: { "Operator": "+" }, renameProperties: { "AddValue": "Value" } },
+  "ext.var.subtract": { newId: "var.number_math", properties: { "Operator": "-" } },
+  "ext.var.multiply": { newId: "var.number_math", properties: { "Operator": "*" } },
+  "ext.var.divide": { newId: "var.number_math", properties: { "Operator": "/" } },
+  "ext.var.equals": { newId: "var.number_compare", properties: { "Operator": "==" } },
 }

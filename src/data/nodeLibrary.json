@@ -233,33 +233,6 @@
    "Preview": "{Name} = {Value}"
   },
   {
-   "Id": "var.add_number",
-   "Category": "🔢 Variables",
-   "Title": "Add Number Variable",
-   "Description": "Adds a number to an existing number variable.",
-   "Search": "variable number add math",
-   "ActionType": "AddNumberVariable",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "Next"
-   ],
-   "Properties": {
-    "Name": {
-     "Type": "text",
-     "DefaultValue": "myNumber",
-     "Options": []
-    },
-    "AddValue": {
-     "Type": "number",
-     "DefaultValue": "1",
-     "Options": []
-    }
-   },
-   "Preview": "{Name} += {AddValue}"
-  },
-  {
    "Id": "var.calculate",
    "Category": "🔢 Variables",
    "Title": "Calculate",
@@ -5473,87 +5446,6 @@
    "Preview": "{VariableName} -> {BlockName}"
   },
   {
-   "Id": "ext.var.subtract",
-   "Category": "🔢 Variables",
-   "Title": "Subtract Number Variable",
-   "Description": "Subtracts a value from a number variable.",
-   "Search": "variable number subtract math",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "Next"
-   ],
-   "Properties": {
-    "Name": {
-     "Type": "text",
-     "DefaultValue": "myNumber",
-     "Options": []
-    },
-    "Value": {
-     "Type": "number",
-     "DefaultValue": "1",
-     "Options": []
-    }
-   },
-   "Preview": "{Name} -= {Value}"
-  },
-  {
-   "Id": "ext.var.multiply",
-   "Category": "🔢 Variables",
-   "Title": "Multiply Number Variable",
-   "Description": "Multiplies a number variable by a value.",
-   "Search": "variable number multiply math",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "Next"
-   ],
-   "Properties": {
-    "Name": {
-     "Type": "text",
-     "DefaultValue": "myNumber",
-     "Options": []
-    },
-    "Value": {
-     "Type": "number",
-     "DefaultValue": "2",
-     "Options": []
-    }
-   },
-   "Preview": "{Name} *= {Value}"
-  },
-  {
-   "Id": "ext.var.divide",
-   "Category": "🔢 Variables",
-   "Title": "Divide Number Variable",
-   "Description": "Divides a number variable by a value; division by zero is reported and skipped.",
-   "Search": "variable number divide math",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "Next"
-   ],
-   "Properties": {
-    "Name": {
-     "Type": "text",
-     "DefaultValue": "myNumber",
-     "Options": []
-    },
-    "Value": {
-     "Type": "number",
-     "DefaultValue": "2",
-     "Options": []
-    }
-   },
-   "Preview": "{Name} /= {Value}"
-  },
-  {
    "Id": "ext.var.clamp",
    "Category": "🔢 Variables",
    "Title": "Clamp Number",
@@ -5665,39 +5557,6 @@
     }
    },
    "Preview": "{Name} = random {Minimum}..{Maximum}"
-  },
-  {
-   "Id": "ext.var.equals",
-   "Category": "🔢 Variables",
-   "Title": "Number Equals",
-   "Description": "Branches when a number variable equals a value within tolerance.",
-   "Search": "variable number equals compare tolerance",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "Name": {
-     "Type": "text",
-     "DefaultValue": "myNumber",
-     "Options": []
-    },
-    "Value": {
-     "Type": "number",
-     "DefaultValue": "0",
-     "Options": []
-    },
-    "Tolerance": {
-     "Type": "number",
-     "DefaultValue": "0.0001",
-     "Options": []
-    }
-   },
-   "Preview": "{Name} == {Value}"
   },
   {
    "Id": "ext.var.between",
@@ -7964,7 +7823,7 @@
    "Id": "var.number_compare",
    "Category": "🔢 Variables",
    "Title": "Number Compare",
-   "Description": "Checks a number variable against a value using any comparison operator.",
+   "Description": "Checks a number variable against a value using any comparison operator. Tolerance only applies to == and !=.",
    "Search": "if number compare greater less equal variable operator >= <= !=",
    "ActionType": "NumberCompare",
    "InputPorts": [
@@ -7995,6 +7854,11 @@
     "Value": {
      "Type": "number",
      "DefaultValue": "10",
+     "Options": []
+    },
+    "Tolerance": {
+     "Type": "number",
+     "DefaultValue": "0.0001",
      "Options": []
     }
    },
@@ -8426,6 +8290,70 @@
     }
    },
    "Preview": "Wheel {BlockName}.{PropertyId} = {Value}"
+  },
+  {
+   "Id": "var.number_math",
+   "Category": "🔢 Variables",
+   "Title": "Number Math",
+   "Description": "Applies +, -, *, or / to a number variable in place.",
+   "Search": "variable number math add subtract multiply divide operator",
+   "ActionType": "NumberMath",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "Next"
+   ],
+   "Properties": {
+    "Name": {
+     "Type": "text",
+     "DefaultValue": "myNumber",
+     "Options": []
+    },
+    "Operator": {
+     "Type": "combo",
+     "DefaultValue": "+",
+     "Options": [
+      "+",
+      "-",
+      "*",
+      "/"
+     ]
+    },
+    "Value": {
+     "Type": "number",
+     "DefaultValue": "1",
+     "Options": []
+    }
+   },
+   "Preview": "{Name} {Operator}= {Value}"
+  },
+  {
+   "Id": "var.append_text",
+   "Category": "🔢 Variables",
+   "Title": "Append Text Variable",
+   "Description": "Appends to an existing text variable (creates it first if empty).",
+   "Search": "variable text string append concatenate add build",
+   "ActionType": "AppendTextVariable",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "Next"
+   ],
+   "Properties": {
+    "Name": {
+     "Type": "text",
+     "DefaultValue": "myText",
+     "Options": []
+    },
+    "Value": {
+     "Type": "text",
+     "DefaultValue": "",
+     "Options": []
+    }
+   },
+   "Preview": "{Name} += \"{Value}\""
   }
  ]
 }

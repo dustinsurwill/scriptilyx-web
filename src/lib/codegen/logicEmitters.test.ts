@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  appendTextVariableEmitter,
   callSectionEmitter,
   calculateEmitter,
   commandRouterEmitter,
   echoEmitter,
   numberCompareEmitter,
   numberGreaterRouterEmitter,
+  numberMathEmitter,
   repeatTimesEmitter,
   runEverySecondsEmitter,
   sectionMethodName,
@@ -38,8 +40,6 @@ describe('numberCompareEmitter', () => {
     ['<', '<'],
     ['>=', '>='],
     ['<=', '<='],
-    ['==', '=='],
-    ['!=', '!='],
   ])('emits the %s operator verbatim', (operator, expected) => {
     const node = makeNode({ ActionType: 'NumberCompare', Properties: { Name: 'n', Operator: operator, Value: '5' } })
     const emit = numberCompareEmitter(node, fakeContext())
@@ -55,6 +55,64 @@ describe('numberCompareEmitter', () => {
   it('Value can be a variable reference instead of a literal', () => {
     const node = makeNode({ ActionType: 'NumberCompare', Properties: { Name: 'n', Operator: '>', Value: '{threshold}' } })
     expect(expressionOf(numberCompareEmitter(node, fakeContext()))).toBe('GetNum("n") > GetNum("threshold")')
+  })
+
+  it('== and != compare within Tolerance instead of an exact float ==, absorbing the retired Number Equals node', () => {
+    const node = makeNode({ ActionType: 'NumberCompare', Properties: { Name: 'n', Operator: '==', Value: '5', Tolerance: '0.01' } })
+    expect(expressionOf(numberCompareEmitter(node, fakeContext()))).toBe('Math.Abs(GetNum("n") - (5d)) <= (0.01)')
+
+    const notEqual = makeNode({ ActionType: 'NumberCompare', Properties: { Name: 'n', Operator: '!=', Value: '5', Tolerance: '0.01' } })
+    expect(expressionOf(numberCompareEmitter(notEqual, fakeContext()))).toBe('!(Math.Abs(GetNum("n") - (5d)) <= (0.01))')
+  })
+
+  it('a missing Tolerance defaults to 0 (exact equality), for old nodes/graphs saved before Tolerance existed', () => {
+    const node = makeNode({ ActionType: 'NumberCompare', Properties: { Name: 'n', Operator: '==', Value: '5' } })
+    expect(expressionOf(numberCompareEmitter(node, fakeContext()))).toBe('Math.Abs(GetNum("n") - (5d)) <= (0d)')
+  })
+})
+
+describe('numberMathEmitter', () => {
+  it.each([
+    ['+', 'GetNum("n") + (3d)'],
+    ['-', 'GetNum("n") - (3d)'],
+    ['*', 'GetNum("n") * (3d)'],
+  ])('applies the %s operator in place, replacing Add/Subtract/Multiply Number Variable', (operator, expected) => {
+    const node = makeNode({ ActionType: 'NumberMath', Properties: { Name: 'n', Operator: operator, Value: '3' } })
+    const emit = numberMathEmitter(node, fakeContext())
+    expect(statementsOf(emit).join('\n')).toContain(`_num["n"] = ${expected};`)
+  })
+
+  it('divide guards against a zero divisor instead of crashing the script', () => {
+    const node = makeNode({ ActionType: 'NumberMath', Properties: { Name: 'n', Operator: '/', Value: '0' } })
+    const emit = numberMathEmitter(node, fakeContext())
+    const statements = statementsOf(emit).join('\n')
+    expect(statements).toContain('if ((0d) == 0)')
+    expect(statements).toContain('Echo("Divide by zero: " + "n")')
+  })
+
+  it('divides normally for a non-zero divisor', () => {
+    const node = makeNode({ ActionType: 'NumberMath', Properties: { Name: 'n', Operator: '/', Value: '4' } })
+    const statements = statementsOf(numberMathEmitter(node, fakeContext())).join('\n')
+    expect(statements).toContain('_num["n"] = GetNum("n") / (4d);')
+  })
+
+  it('falls back to + for an unrecognized/missing operator', () => {
+    const node = makeNode({ ActionType: 'NumberMath', Properties: { Name: 'n', Operator: '', Value: '3' } })
+    expect(statementsOf(numberMathEmitter(node, fakeContext())).join('\n')).toContain('_num["n"] = GetNum("n") + (3d);')
+  })
+})
+
+describe('appendTextVariableEmitter', () => {
+  it('appends a literal value', () => {
+    const node = makeNode({ ActionType: 'AppendTextVariable', Properties: { Name: 't', Value: 'more' } })
+    const emit = appendTextVariableEmitter(node, fakeContext())
+    expect(statementsOf(emit).join('\n')).toContain('_text["t"] = GetText("t") + "more";')
+  })
+
+  it('Value supports the same {name} interpolation as Set Text Variable/Echo', () => {
+    const node = makeNode({ ActionType: 'AppendTextVariable', Properties: { Name: 't', Value: '{other}' } })
+    const emit = appendTextVariableEmitter(node, fakeContext())
+    expect(statementsOf(emit).join('\n')).toContain('_text["t"] = GetText("t") + $"{GetNum("other")}";')
   })
 })
 

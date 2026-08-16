@@ -22,6 +22,28 @@ export function remapLegacyGraph(data: GraphSaveData): GraphSaveData {
     const definition = definitionsById.get(remap.newId)
     if (!definition) return node
     changed = true
+
+    // Old key -> new key first (e.g. AddNumberVariable's "AddValue" ->
+    // Number Math's "Value"), then the fixed overrides on top.
+    const carried: Record<string, string> = { ...node.Properties }
+    for (const [oldKey, newKey] of Object.entries(remap.renameProperties ?? {})) {
+      if (oldKey in carried) {
+        carried[newKey] = carried[oldKey]
+        delete carried[oldKey]
+      }
+    }
+    const merged = { ...carried, ...remap.properties }
+
+    // Rebuild Properties from the new definition's own key set (falling
+    // back to its DefaultValue) rather than spreading the old node's
+    // Properties wholesale — otherwise a stale key with no home on the
+    // new definition (nothing renamed it away) would linger and show up
+    // as a spurious extra field in PropertyPanel.
+    const properties: Record<string, string> = {}
+    for (const [key, propDef] of Object.entries(definition.Properties)) {
+      properties[key] = merged[key] ?? propDef.DefaultValue
+    }
+
     return {
       ...node,
       DefinitionId: definition.Id,
@@ -30,7 +52,7 @@ export function remapLegacyGraph(data: GraphSaveData): GraphSaveData {
       Description: definition.Description,
       InputPorts: [...definition.InputPorts],
       OutputPorts: [...definition.OutputPorts],
-      Properties: { ...node.Properties, ...remap.properties },
+      Properties: properties,
     }
   })
   return changed ? { ...data, Nodes: nodes } : data

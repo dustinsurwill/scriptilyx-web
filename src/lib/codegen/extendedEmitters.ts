@@ -360,29 +360,6 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
   },
 
   // --- Number variable helpers ----------------------------------------------
-  'ext.var.subtract': (node, ctx) => {
-    ctx.useHelper('Vars')
-    const key = stringLiteral(prop(node, 'Name'))
-    return { kind: 'action', statements: [`_num[${key}] = GetNum(${key}) - (${prop(node, 'Value') || '0'});`, ctx.next(node, 'Next')] }
-  },
-  'ext.var.multiply': (node, ctx) => {
-    ctx.useHelper('Vars')
-    const key = stringLiteral(prop(node, 'Name'))
-    return { kind: 'action', statements: [`_num[${key}] = GetNum(${key}) * (${prop(node, 'Value') || '0'});`, ctx.next(node, 'Next')] }
-  },
-  'ext.var.divide': (node, ctx) => {
-    ctx.useHelper('Vars')
-    const key = stringLiteral(prop(node, 'Name'))
-    const value = prop(node, 'Value') || '0'
-    return {
-      kind: 'raw',
-      statements: [
-        `if ((${value}) == 0) { Echo("Divide by zero: " + ${key}); }`,
-        `else { _num[${key}] = GetNum(${key}) / (${value}); }`,
-        ctx.next(node, 'Next'),
-      ],
-    }
-  },
   'ext.var.clamp': (node, ctx) => {
     ctx.useHelper('Vars')
     const key = stringLiteral(prop(node, 'Name'))
@@ -416,14 +393,6 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
     return {
       kind: 'action',
       statements: [`_num[${key}] = ${min} + _rng.NextDouble() * ((${max}) - (${min}));`, ctx.next(node, 'Next')],
-    }
-  },
-  'ext.var.equals': (node, ctx) => {
-    ctx.useHelper('Vars')
-    const key = stringLiteral(prop(node, 'Name'))
-    return {
-      kind: 'condition',
-      expression: `Math.Abs(GetNum(${key}) - (${prop(node, 'Value') || '0'})) <= (${prop(node, 'Tolerance') || '0'})`,
     }
   },
   'ext.var.between': (node, ctx) => {

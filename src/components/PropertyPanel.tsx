@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { NodeDefinition, ScriptNode } from '../types/graph'
 import { useGraphStore } from '../store/graphStore'
-import { buildVariableRegistry, type VariableRegistry } from '../lib/variableRegistry'
+import { buildVariableRegistry, type VarKind, type VariableRegistry } from '../lib/variableRegistry'
+
+const ALL_KINDS: VarKind[] = ['num', 'text', 'bool']
 
 interface PropertyPanelProps {
   scriptNode: ScriptNode | undefined
@@ -39,17 +41,24 @@ const KIND_LABEL: Record<'num' | 'text' | 'bool', string> = { num: 'Number', tex
  * registry is exactly what lets that prefix be dropped. `mode: 'replace'`
  * is for whole-value reference fields (Enabled, Percent, ...); `'append'`
  * is for template-string fields (Echo/LCD Text) where the reference sits
- * alongside literal text. */
+ * alongside literal text. `kinds` restricts the list to types the field
+ * can actually use — a combo/bool field can only take a bool variable, a
+ * number field only a num variable, so showing the other kinds there
+ * would just be an option that's guaranteed to be a type error once
+ * generated; append-mode text fields accept all three (a template string
+ * can embed a number/bool/text variable's value equally well). */
 function VariablePicker({
   registry,
   mode,
+  kinds = ALL_KINDS,
   onInsert,
 }: {
   registry: VariableRegistry
   mode: 'replace' | 'append'
+  kinds?: VarKind[]
   onInsert: (token: string) => void
 }) {
-  const hasAny = registry.namesByKind.num.length + registry.namesByKind.text.length + registry.namesByKind.bool.length > 0
+  const hasAny = kinds.some((kind) => registry.namesByKind[kind].length > 0)
   if (!hasAny) return null
   return (
     <select
@@ -61,7 +70,7 @@ function VariablePicker({
       style={{ flex: '0 0 auto', maxWidth: 120 }}
     >
       <option value="">{mode === 'replace' ? 'Variable…' : 'Insert…'}</option>
-      {(['num', 'text', 'bool'] as const).map(
+      {kinds.map(
         (kind) =>
           registry.namesByKind[kind].length > 0 && (
             <optgroup key={kind} label={KIND_LABEL[kind]}>
@@ -112,6 +121,15 @@ export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
         const propDef = definition?.Properties[key]
         const type = propDef?.Type ?? 'text'
         const help = definition ? PROPERTY_HELP[`${definition.Id}:${key}`] : undefined
+        const options = propDef?.Options.length ? propDef.Options : ['true', 'false']
+        // Only a true boolean combo (exactly true/false) goes through
+        // resolvableBool at codegen time — an enum-style combo (Operator,
+        // Direction, State, ...) is read as a raw literal and compared
+        // against known option strings, so a "{name}" reference there
+        // wouldn't resolve to anything: it would just silently fail to
+        // match and fall back to that emitter's default. Only offer the
+        // variable-reference escape hatch where it can actually work.
+        const isBooleanCombo = options.length === 2 && options.includes('true') && options.includes('false')
 
         return (
           <label key={key} style={{ display: 'block', marginBottom: 10, fontSize: 12 }}>
@@ -149,7 +167,7 @@ export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
                 />
               </div>
             ) : type === 'combo' || type === 'bool' ? (
-              manualKeys.has(key) || isVariableReference(value) ? (
+              isBooleanCombo && (manualKeys.has(key) || isVariableReference(value)) ? (
                 <div style={{ display: 'flex', gap: 4 }}>
                   <input
                     type="text"
@@ -162,6 +180,7 @@ export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
                   <VariablePicker
                     registry={registry}
                     mode="replace"
+                    kinds={['bool']}
                     onInsert={(token) => updateNodeProperty(scriptNode.Id, key, token)}
                   />
                   <button
@@ -173,8 +192,7 @@ export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
                         next.delete(key)
                         return next
                       })
-                      const fallback = propDef?.Options[0] ?? 'true'
-                      if (isVariableReference(value)) updateNodeProperty(scriptNode.Id, key, fallback)
+                      if (isVariableReference(value)) updateNodeProperty(scriptNode.Id, key, options[0])
                     }}
                     style={{ flex: '0 0 auto' }}
                   >
@@ -189,20 +207,22 @@ export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
                     onChange={(e) => updateNodeProperty(scriptNode.Id, key, e.target.value)}
                     style={{ width: '100%', boxSizing: 'border-box' }}
                   >
-                    {(propDef?.Options.length ? propDef.Options : ['true', 'false']).map((opt) => (
+                    {options.map((opt) => (
                       <option key={opt} value={opt}>
                         {opt}
                       </option>
                     ))}
                   </select>
-                  <button
-                    type="button"
-                    title="Use a variable instead of a fixed value"
-                    onClick={() => setManualKeys((prev) => new Set(prev).add(key))}
-                    style={{ flex: '0 0 auto' }}
-                  >
-                    {'{ }'}
-                  </button>
+                  {isBooleanCombo && (
+                    <button
+                      type="button"
+                      title="Use a variable instead of a fixed value"
+                      onClick={() => setManualKeys((prev) => new Set(prev).add(key))}
+                      style={{ flex: '0 0 auto' }}
+                    >
+                      {'{ }'}
+                    </button>
+                  )}
                 </div>
               )
             ) : type === 'number' ? (
@@ -217,6 +237,7 @@ export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
                 <VariablePicker
                   registry={registry}
                   mode="replace"
+                  kinds={['num']}
                   onInsert={(token) => updateNodeProperty(scriptNode.Id, key, token)}
                 />
               </div>

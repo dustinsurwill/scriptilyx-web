@@ -24,9 +24,10 @@ function storageKind(node: ScriptNode): VarKind {
  * ExtendedBuiltin) — see registry.ts's resolveEmitter. */
 const BY_ACTION_TYPE: Record<string, RoleSpec> = {
   SetNumberVariable: { keys: ['Name'], kind: 'num', declares: true },
-  AddNumberVariable: { keys: ['Name'], kind: 'num', declares: true },
+  NumberMath: { keys: ['Name'], kind: 'num', declares: true },
   CalculateFormula: { keys: ['Name'], kind: 'num', declares: true },
   SetTextVariable: { keys: ['Name'], kind: 'text', declares: true },
+  AppendTextVariable: { keys: ['Name'], kind: 'text', declares: true },
   IfNumberLessThan: { keys: ['Name'], kind: 'num', declares: false },
   IfNumberGreaterThan: { keys: ['Name'], kind: 'num', declares: false },
   IfTextEquals: { keys: ['Name'], kind: 'text', declares: false },
@@ -37,13 +38,9 @@ const BY_ACTION_TYPE: Record<string, RoleSpec> = {
 /** Keyed by DefinitionId, for ExtendedBuiltin nodes (dispatched by node id,
  * not ActionType — see registry.ts). */
 const BY_DEFINITION_ID: Record<string, RoleSpec> = {
-  'ext.var.subtract': { keys: ['Name'], kind: 'num', declares: true },
-  'ext.var.multiply': { keys: ['Name'], kind: 'num', declares: true },
-  'ext.var.divide': { keys: ['Name'], kind: 'num', declares: true },
   'ext.var.clamp': { keys: ['Name'], kind: 'num', declares: true },
   'ext.var.round': { keys: ['Name'], kind: 'num', declares: true },
   'ext.var.absolute': { keys: ['Name'], kind: 'num', declares: true },
-  'ext.var.equals': { keys: ['Name'], kind: 'num', declares: false },
   'ext.var.between': { keys: ['Name'], kind: 'num', declares: false },
   'ext.var.copy': { keys: ['SourceName', 'DestinationName'], kind: 'num', declares: true },
   'ext.bool.set': { keys: ['Name'], kind: 'bool', declares: true },

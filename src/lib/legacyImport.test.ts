@@ -113,6 +113,65 @@ describe('remapLegacyGraph', () => {
     expect(result.Nodes[0].Properties).toEqual({ BlockName: 'Wheel', PropertyId: 'Propulsion', Value: 'false' })
   })
 
+  it('renames a property key while remapping (AddNumberVariable.AddValue -> Number Math.Value)', () => {
+    const data: GraphSaveData = {
+      Nodes: [
+        legacyNode({
+          DefinitionId: 'var.add_number',
+          ActionType: 'AddNumberVariable',
+          Title: 'Add Number Variable',
+          Properties: { Name: 'score', AddValue: '5' },
+        }),
+      ],
+      Connections: [],
+      NextNodeNumber: 2,
+      Zoom: 1,
+    }
+    const result = remapLegacyGraph(data)
+    expect(result.Nodes[0].DefinitionId).toBe('var.number_math')
+    expect(result.Nodes[0].Properties).toEqual({ Name: 'score', Value: '5', Operator: '+' })
+  })
+
+  it('drops a stale property with no home on the new definition instead of leaking it through', () => {
+    // Subtract/Multiply/Divide Number Variable already used "Value" (no
+    // rename needed) but had no Operator property at all — remapping must
+    // still produce exactly Number Math's key set, not Name+Value+nothing.
+    const data: GraphSaveData = {
+      Nodes: [
+        legacyNode({
+          DefinitionId: 'ext.var.multiply',
+          ActionType: 'ExtendedBuiltin',
+          Title: 'Multiply Number Variable',
+          Properties: { Name: 'score', Value: '2' },
+        }),
+      ],
+      Connections: [],
+      NextNodeNumber: 2,
+      Zoom: 1,
+    }
+    const result = remapLegacyGraph(data)
+    expect(result.Nodes[0].Properties).toEqual({ Name: 'score', Value: '2', Operator: '*' })
+  })
+
+  it('folds the retired Number Equals node onto Number Compare with Operator="=="', () => {
+    const data: GraphSaveData = {
+      Nodes: [
+        legacyNode({
+          DefinitionId: 'ext.var.equals',
+          ActionType: 'ExtendedBuiltin',
+          Title: 'Number Equals',
+          Properties: { Name: 'score', Value: '10', Tolerance: '0.5' },
+        }),
+      ],
+      Connections: [],
+      NextNodeNumber: 2,
+      Zoom: 1,
+    }
+    const result = remapLegacyGraph(data)
+    expect(result.Nodes[0].DefinitionId).toBe('var.number_compare')
+    expect(result.Nodes[0].Properties).toEqual({ Name: 'score', Value: '10', Tolerance: '0.5', Operator: '==' })
+  })
+
   it('leaves nodes with a current or unknown DefinitionId untouched', () => {
     const data: GraphSaveData = {
       Nodes: [legacyNode({ DefinitionId: 'block.set_enabled', Title: 'Set Block Enabled' }), legacyNode({ Id: 'n2', DefinitionId: 'totally.unknown.id' })],
