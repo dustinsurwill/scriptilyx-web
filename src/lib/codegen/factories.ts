@@ -1,6 +1,6 @@
 import type { ScriptNode } from '../../types/graph'
 import type { EmitContext, NodeEmitter } from './types'
-import { boolLiteral, hasInterpolation, interpolatedStringLiteral, stringLiteral } from './format'
+import { boolLiteral, hasInterpolation, interpolatedStringLiteral, numberLiteral, stringLiteral } from './format'
 
 // ---------------------------------------------------------------------------
 // Factories — each returns a NodeEmitter for a family of ActionTypes/node ids
@@ -95,6 +95,29 @@ export function blockCondition(
   }
 }
 
+/**
+ * Same shape as `blockCondition`, but for the merged Above|Below threshold
+ * nodes (battery/gas-tank/cargo/room-oxygen/ship-speed/jump-drive-charge/
+ * piston-position): the comparison operator comes from the node's own
+ * `Direction` combo property instead of being baked into a separate
+ * Above/Below node.
+ */
+export function blockThresholdCondition(
+  iface: string,
+  valueExpr: (varName: string) => string,
+  valueKey: string,
+  nameKey = 'BlockName',
+): NodeEmitter {
+  return (node, ctx) => {
+    ctx.useHelper('GetBlock')
+    const operator = prop(node, 'Direction') === 'Below' ? '<' : '>'
+    return {
+      kind: 'condition',
+      expression: `GetBlock(${stringLiteral(prop(node, nameKey))}) is ${iface} v && ${valueExpr('v')} ${operator} ${resolvableNumber(node, valueKey, ctx)}`,
+    }
+  }
+}
+
 /** Boolean condition over every block in a named group: `blocks.All/Any(blk => ...)`. */
 export function groupCondition(
   iface: string,
@@ -120,12 +143,15 @@ export const lockedValue = (node: ScriptNode) => boolLiteral(prop(node, 'Locked'
 // a type other than number). Shared by Echo and every LCD-text emitter.
 // ---------------------------------------------------------------------------
 
-/** Reads a `{kind:name}` or `{name}` (kind defaults to "num") interpolation
- * hole and returns the C# read expression for it. */
-function resolveInterpolationHole(expr: string): string {
+/** Reads a `{kind:name}` or `{name}` interpolation hole and returns the C#
+ * read expression for it. With no `kind:` prefix, the type is looked up in
+ * the graph-wide variable registry (`ctx.variableKind`) first — so a
+ * declared variable never needs the prefix at all — and only falls back to
+ * `defaultKind` for a name the registry doesn't know about. */
+function resolveInterpolationHole(expr: string, ctx: EmitContext, defaultKind: 'num' | 'text' | 'bool' = 'num'): string {
   const match = /^(num|text|bool)\s*:\s*(.+)$/i.exec(expr.trim())
-  const kind = match ? match[1].toLowerCase() : 'num'
   const name = (match ? match[2] : expr).trim()
+  const kind = match ? match[1].toLowerCase() : (ctx.variableKind(name) ?? defaultKind)
   const getter = kind === 'text' ? 'GetText' : kind === 'bool' ? 'GetBool' : 'GetNum'
   return `${getter}(${stringLiteral(name)})`
 }
@@ -137,7 +163,42 @@ export function interpolatedTextExpr(node: ScriptNode, ctx: EmitContext, key = '
   const template = prop(node, key)
   if (!hasInterpolation(template)) return stringLiteral(template)
   ctx.useHelper('Vars')
-  return interpolatedStringLiteral(template, resolveInterpolationHole)
+  return interpolatedStringLiteral(template, (expr) => resolveInterpolationHole(expr, ctx))
+}
+
+/** True if `raw` is *exactly* one `{...}` interpolation hole (as opposed to
+ * embedded inside surrounding text) — the shape a non-text property (a
+ * combo/bool/number field, which has no room for a template) needs to
+ * opt into reading a variable instead of a fixed literal. */
+function isPureInterpolation(raw: string): boolean {
+  return /^\{[^{}]+\}$/.test(raw.trim())
+}
+
+/**
+ * Resolves a bool-typed property (Enabled, Locked, ...) that may be either
+ * a literal `"true"`/`"false"` or a single `{myFlag}`/`{bool:myFlag}`
+ * variable reference — same interpolation syntax already used by Echo/LCD
+ * text, just applied to a whole property value instead of embedded in a
+ * string. Lets nodes like SetBlockEnabled be driven by a variable instead
+ * of only a fixed combo value.
+ */
+export function resolvableBool(node: ScriptNode, key: string, ctx: EmitContext): string {
+  const raw = prop(node, key)
+  if (isPureInterpolation(raw)) {
+    ctx.useHelper('Vars')
+    return resolveInterpolationHole(raw.trim().slice(1, -1), ctx, 'bool')
+  }
+  return boolLiteral(raw)
+}
+
+/** Same as `resolvableBool`, for number-typed properties (Percent, Value, ...). */
+export function resolvableNumber(node: ScriptNode, key: string, ctx: EmitContext): string {
+  const raw = prop(node, key)
+  if (isPureInterpolation(raw)) {
+    ctx.useHelper('Vars')
+    return resolveInterpolationHole(raw.trim().slice(1, -1), ctx, 'num')
+  }
+  return numberLiteral(raw)
 }
 
 // ---------------------------------------------------------------------------
@@ -178,6 +239,23 @@ export function terminalPropertyCondition<T extends string>(
     const getExpr = `(GetBlock(${stringLiteral(prop(node, nameKey))})?.GetValue<${csharpType}>(${stringLiteral(prop(node, propKey))}) ?? default(${csharpType}))`
     return { kind: 'condition', expression: compare(getExpr, node) }
   }
+}
+
+/** Merges the retired *True/*False terminal-bool-property check pairs
+ * (If Any Bool Property True|False) into one node with a `Value:
+ * True|False` combo. */
+export function terminalBoolPropertyCondition(): NodeEmitter {
+  return terminalPropertyCondition('bool', (get, n) => (prop(n, 'Value') === 'False' ? `!${get}` : get))
+}
+
+/** Merges the retired *Above/*Below terminal-float-property check pairs
+ * (If Any Float Property Above|Below) into one node with a `Direction:
+ * Above|Below` combo. */
+export function terminalFloatThresholdCondition(): NodeEmitter {
+  return terminalPropertyCondition(
+    'float',
+    (get, n) => `${get} ${prop(n, 'Direction') === 'Below' ? '<' : '>'} ${numberLiteral(prop(n, 'Value'))}`,
+  )
 }
 
 export function terminalAction(nameKey = 'BlockName', actionKey = 'ActionId'): NodeEmitter {

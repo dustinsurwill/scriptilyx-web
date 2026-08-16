@@ -64,9 +64,62 @@ describe('conveyor sorter filters (regression: was previously a no-op stub)', ()
   })
 })
 
-describe('CargoPercentBelow uses the extension-method GetInventory(0) signature', () => {
+describe('CargoThreshold uses the extension-method GetInventory(0) signature', () => {
   it('passes the required index argument', () => {
-    const e = emit('CargoPercentBelow', { BlockName: 'Cargo', Percent: '20' })
+    const e = emit('CargoThreshold', { BlockName: 'Cargo', Percent: '20', Direction: 'Below' })
     expect(expressionOf(e)).toContain('.GetInventory(0)')
+    expect(expressionOf(e)).toContain('< 20')
+  })
+
+  it('defaults to Above (>) for a missing/unrecognized Direction', () => {
+    const e = emit('CargoThreshold', { BlockName: 'Cargo', Percent: '20' })
+    expect(expressionOf(e)).toContain('> 20')
+  })
+})
+
+describe('merged Above|Below threshold nodes', () => {
+  it('PistonPositionThreshold switches operator on Direction', () => {
+    const above = emit('PistonPositionThreshold', { BlockName: 'P', Meters: '5', Direction: 'Above' })
+    const below = emit('PistonPositionThreshold', { BlockName: 'P', Meters: '5', Direction: 'Below' })
+    expect(expressionOf(above)).toContain('CurrentPosition > 5')
+    expect(expressionOf(below)).toContain('CurrentPosition < 5')
+  })
+
+  it('BatteryThreshold and JumpDriveChargeThreshold use the stored-power ratio', () => {
+    const battery = emit('BatteryThreshold', { BlockName: 'B', Percent: '30', Direction: 'Below' })
+    const jumpDrive = emit('JumpDriveChargeThreshold', { BlockName: 'J', Percent: '30', Direction: 'Below' })
+    expect(expressionOf(battery)).toContain('CurrentStoredPower / v.MaxStoredPower * 100.0 < 30')
+    expect(expressionOf(jumpDrive)).toContain('CurrentStoredPower / v.MaxStoredPower * 100.0 < 30')
+  })
+
+  it('GasTankThreshold, RoomOxygenThreshold, ShipSpeedThreshold all resolve', () => {
+    expect(expressionOf(emit('GasTankThreshold', { BlockName: 'T', Percent: '50', Direction: 'Above' }))).toContain('FilledRatio * 100.0 > 50')
+    expect(expressionOf(emit('RoomOxygenThreshold', { BlockName: 'V', Percent: '50', Direction: 'Above' }))).toContain('GetOxygenLevel() * 100.0 > 50')
+    expect(expressionOf(emit('ShipSpeedThreshold', { BlockName: 'S', Speed: '10', Direction: 'Above' }))).toContain('GetShipSpeed() > 10')
+  })
+
+  it('RotorRpmThreshold, RotorAngleThreshold, HingeAngleThreshold switch operator on Direction', () => {
+    expect(expressionOf(emit('RotorRpmThreshold', { BlockName: 'R', RPM: '5', Direction: 'Below' }))).toContain('TargetVelocityRPM < 5')
+    expect(expressionOf(emit('RotorAngleThreshold', { BlockName: 'R', AngleDeg: '45', Direction: 'Above' }))).toContain('Angle * 180.0 / Math.PI > 45')
+    expect(expressionOf(emit('HingeAngleThreshold', { BlockName: 'H', AngleDeg: '45', Direction: 'Below' }))).toContain('Angle * 180.0 / Math.PI < 45')
+  })
+})
+
+describe('merged AI-Block/Event-Controller terminal-property checks', () => {
+  it('IfAiBlockBool/IfEventControllerBool switch on Value instead of a separate True/False node', () => {
+    const t = emit('IfAiBlockBool', { BlockName: 'A', PropertyId: 'HasTarget', Value: 'True' })
+    const f = emit('IfAiBlockBool', { BlockName: 'A', PropertyId: 'HasTarget', Value: 'False' })
+    expect(expressionOf(t)).not.toContain('!(')
+    expect(expressionOf(f)).toContain('!(')
+
+    const ecT = emit('IfEventControllerBool', { BlockName: 'E', PropertyId: 'IsTriggered', Value: 'True' })
+    expect(expressionOf(ecT)).toContain('GetValue<bool>')
+  })
+
+  it('IfAiBlockFloat/IfEventControllerFloat switch operator on Direction', () => {
+    const above = emit('IfAiBlockFloat', { BlockName: 'A', PropertyId: 'X', Value: '5', Direction: 'Above' })
+    const below = emit('IfEventControllerFloat', { BlockName: 'E', PropertyId: 'X', Value: '5', Direction: 'Below' })
+    expect(expressionOf(above)).toContain('> 5')
+    expect(expressionOf(below)).toContain('< 5')
   })
 })

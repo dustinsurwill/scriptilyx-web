@@ -1,5 +1,6 @@
 import type { NodeConnection, ScriptNode } from '../../types/graph'
 import { findStartNodes } from '../graph'
+import { buildVariableRegistry } from '../variableRegistry'
 import { stringLiteral, titleToIdentifier } from './format'
 import { findSectionStartNodes, sectionMethodName } from './logicEmitters'
 import { HELPER_SOURCE } from './helpers'
@@ -138,6 +139,7 @@ export function generateScript(
 
   const usedHelpers = new Set<string>()
   const tickBudget = options.multiTickBudget
+  const variableRegistry = buildVariableRegistry(nodes)
 
   function targetKey(node: ScriptNode, port: string): string | null {
     const wire = outgoingByPort.get(`${node.Id}::${port}`)
@@ -164,6 +166,7 @@ export function generateScript(
         if (tickBudget) return `_nextNode = ${stringLiteral(methodName(target))};`
         return `${sectionMethodName(sectionName)}();`
       },
+      variableKind: (name) => variableRegistry.kindOf.get(name),
     }
   }
 

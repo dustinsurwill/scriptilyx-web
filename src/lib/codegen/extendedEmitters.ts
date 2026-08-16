@@ -14,7 +14,8 @@ import {
   lcdWrite,
   prop,
   terminalActionByNameContains,
-  terminalPropertyCondition,
+  terminalBoolPropertyCondition,
+  terminalFloatThresholdCondition,
 } from './factories'
 import type { NodeEmitter } from './types'
 
@@ -91,10 +92,8 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
   'ext.generic.get_bool': terminalPropertySetterGetter('bool'),
   'ext.generic.get_int': terminalPropertySetterGetter('long'),
   'ext.generic.get_text': terminalPropertySetterGetter('string'),
-  'ext.generic.if_float_above': terminalPropertyCondition('float', (get, n) => `${get} > ${numberLiteral(prop(n, 'Value'))}`),
-  'ext.generic.if_float_below': terminalPropertyCondition('float', (get, n) => `${get} < ${numberLiteral(prop(n, 'Value'))}`),
-  'ext.generic.if_bool_true': terminalPropertyCondition('bool', (get) => get),
-  'ext.generic.if_bool_false': terminalPropertyCondition('bool', (get) => `!${get}`),
+  'ext.generic.if_float': terminalFloatThresholdCondition(),
+  'ext.generic.if_bool': terminalBoolPropertyCondition(),
   'ext.generic.block_exists': (node, ctx) => {
     ctx.useHelper('GetBlock')
     return { kind: 'condition', expression: `GetBlock(${stringLiteral(prop(node, 'BlockName'))}) != null` }
@@ -170,14 +169,10 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
   },
 
   // --- Piston -------------------------------------------------------------
-  'ext.piston.if_above': blockCondition('IMyPistonBase', (v, n) => `${v}.CurrentPosition > ${numberLiteral(prop(n, 'Meters'))}`),
-  'ext.piston.if_below': blockCondition('IMyPistonBase', (v, n) => `${v}.CurrentPosition < ${numberLiteral(prop(n, 'Meters'))}`),
   'ext.piston.if_extended': blockCondition('IMyPistonBase', (v) => `${v}.CurrentPosition >= ${v}.HighestPosition`),
   'ext.piston.if_retracted': blockCondition('IMyPistonBase', (v) => `${v}.CurrentPosition <= ${v}.LowestPosition`),
 
   // --- Rotor / hinge --------------------------------------------------------
-  'ext.rotor.if_rpm_above': blockCondition('IMyMotorStator', (v, n) => `${v}.TargetVelocityRPM > ${numberLiteral(prop(n, 'RPM'))}`),
-  'ext.rotor.if_rpm_below': blockCondition('IMyMotorStator', (v, n) => `${v}.TargetVelocityRPM < ${numberLiteral(prop(n, 'RPM'))}`),
   'ext.rotor.if_stopped': blockCondition('IMyMotorStator', (v) => `Math.Abs(${v}.TargetVelocityRPM) < 0.001f`),
   'ext.hinge.if_locked': blockCondition('IMyMotorStator', (v) => `${v}.RotorLock`),
   'ext.hinge.if_moving': blockCondition('IMyMotorStator', (v) => `Math.Abs(${v}.TargetVelocityRPM) >= 0.001f`),
@@ -213,22 +208,14 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
   },
 
   // --- Gas tank ---------------------------------------------------------------
-  'ext.tank.if_above': blockCondition('IMyGasTank', (v, n) => `${v}.FilledRatio * 100.0 > ${numberLiteral(prop(n, 'Percent'))}`),
-  'ext.tank.if_below': blockCondition('IMyGasTank', (v, n) => `${v}.FilledRatio * 100.0 < ${numberLiteral(prop(n, 'Percent'))}`),
   'ext.tank.get_fill': getBlockMemberIntoVar('num', 'IMyGasTank', (v) => `${v}.FilledRatio * 100.0`),
 
   // --- Air vent -----------------------------------------------------------
   'ext.vent.if_pressurized': blockCondition('IMyAirVent', (v, n) => `${v}.GetOxygenLevel() * 100.0 >= ${numberLiteral(prop(n, 'Percent'))}`),
   'ext.vent.if_depressurized': blockCondition('IMyAirVent', (v, n) => `${v}.GetOxygenLevel() * 100.0 <= ${numberLiteral(prop(n, 'Percent'))}`),
-  'ext.vent.if_oxygen_above': blockCondition('IMyAirVent', (v, n) => `${v}.GetOxygenLevel() * 100.0 > ${numberLiteral(prop(n, 'Percent'))}`),
-  'ext.vent.if_oxygen_below': blockCondition('IMyAirVent', (v, n) => `${v}.GetOxygenLevel() * 100.0 < ${numberLiteral(prop(n, 'Percent'))}`),
   'ext.vent.get_oxygen': getBlockMemberIntoVar('num', 'IMyAirVent', (v) => `${v}.GetOxygenLevel() * 100.0`),
 
   // --- Battery ------------------------------------------------------------
-  'ext.battery.if_above': blockCondition(
-    'IMyBatteryBlock',
-    (v, n) => `${v}.CurrentStoredPower / ${v}.MaxStoredPower * 100.0 > ${numberLiteral(prop(n, 'Percent'))}`,
-  ),
   'ext.battery.get_charge': getBlockMemberIntoVar('num', 'IMyBatteryBlock', (v) => `${v}.CurrentStoredPower / ${v}.MaxStoredPower * 100.0`),
   'ext.battery.charge_router': (node, ctx) => {
     ctx.useHelper('GetBlock')
@@ -251,11 +238,6 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
   },
 
   // --- Cargo ----------------------------------------------------------------
-  'ext.cargo.if_above': blockCondition(
-    'IMyCargoContainer',
-    (v, n) =>
-      `(double)${v}.GetInventory(0).CurrentVolume / (double)${v}.GetInventory(0).MaxVolume * 100.0 > ${numberLiteral(prop(n, 'Percent'))}`,
-  ),
   'ext.cargo.get_fill': getBlockMemberIntoVar(
     'num',
     'IMyCargoContainer',
@@ -375,29 +357,6 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
   },
 
   // --- Number variable helpers ----------------------------------------------
-  'ext.var.subtract': (node, ctx) => {
-    ctx.useHelper('Vars')
-    const key = stringLiteral(prop(node, 'Name'))
-    return { kind: 'action', statements: [`_num[${key}] = GetNum(${key}) - (${prop(node, 'Value') || '0'});`, ctx.next(node, 'Next')] }
-  },
-  'ext.var.multiply': (node, ctx) => {
-    ctx.useHelper('Vars')
-    const key = stringLiteral(prop(node, 'Name'))
-    return { kind: 'action', statements: [`_num[${key}] = GetNum(${key}) * (${prop(node, 'Value') || '0'});`, ctx.next(node, 'Next')] }
-  },
-  'ext.var.divide': (node, ctx) => {
-    ctx.useHelper('Vars')
-    const key = stringLiteral(prop(node, 'Name'))
-    const value = prop(node, 'Value') || '0'
-    return {
-      kind: 'raw',
-      statements: [
-        `if ((${value}) == 0) { Echo("Divide by zero: " + ${key}); }`,
-        `else { _num[${key}] = GetNum(${key}) / (${value}); }`,
-        ctx.next(node, 'Next'),
-      ],
-    }
-  },
   'ext.var.clamp': (node, ctx) => {
     ctx.useHelper('Vars')
     const key = stringLiteral(prop(node, 'Name'))
@@ -433,14 +392,6 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
       statements: [`_num[${key}] = ${min} + _rng.NextDouble() * ((${max}) - (${min}));`, ctx.next(node, 'Next')],
     }
   },
-  'ext.var.equals': (node, ctx) => {
-    ctx.useHelper('Vars')
-    const key = stringLiteral(prop(node, 'Name'))
-    return {
-      kind: 'condition',
-      expression: `Math.Abs(GetNum(${key}) - (${prop(node, 'Value') || '0'})) <= (${prop(node, 'Tolerance') || '0'})`,
-    }
-  },
   'ext.var.between': (node, ctx) => {
     ctx.useHelper('Vars')
     const key = stringLiteral(prop(node, 'Name'))
@@ -460,13 +411,10 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
     }
   },
   'ext.bool.set': setVar('bool', 'Name', (n) => boolLiteral(prop(n, 'Value'))),
-  'ext.bool.if_true': (node, ctx) => {
+  'ext.bool.if': (node, ctx) => {
     ctx.useHelper('Vars')
-    return { kind: 'condition', expression: `GetBool(${stringLiteral(prop(node, 'Name'))})` }
-  },
-  'ext.bool.if_false': (node, ctx) => {
-    ctx.useHelper('Vars')
-    return { kind: 'condition', expression: `!GetBool(${stringLiteral(prop(node, 'Name'))})` }
+    const get = `GetBool(${stringLiteral(prop(node, 'Name'))})`
+    return { kind: 'condition', expression: prop(node, 'Value') === 'False' ? `!${get}` : get }
   },
   'ext.bool.toggle': (node, ctx) => {
     ctx.useHelper('Vars')
@@ -530,7 +478,6 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
 
   // --- Timer --------------------------------------------------------------
   'ext.timer.if_counting': blockCondition('IMyTimerBlock', (v) => `${v}.IsCountingDown`),
-  'ext.timer.if_enabled': blockCondition('IMyFunctionalBlock', (v) => `${v}.Enabled`),
   'ext.timer.start_delay': (node, ctx) => {
     ctx.useHelper('GetBlock')
     const name = stringLiteral(prop(node, 'BlockName'))
@@ -560,8 +507,6 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
 
   // --- Ship controller (cockpit / remote control) -----------------------------
   'ext.ship.get_speed': getBlockMemberIntoVar('num', 'IMyShipController', (v) => `${v}.GetShipSpeed()`),
-  'ext.ship.if_speed_above': blockCondition('IMyShipController', (v, n) => `${v}.GetShipSpeed() > ${numberLiteral(prop(n, 'Speed'))}`),
-  'ext.ship.if_speed_below': blockCondition('IMyShipController', (v, n) => `${v}.GetShipSpeed() < ${numberLiteral(prop(n, 'Speed'))}`),
   'ext.ship.get_mass': getBlockMemberIntoVar('num', 'IMyShipController', (v) => `${v}.CalculateShipMass().PhysicalMass`),
   'ext.ship.get_natural_gravity': getBlockMemberIntoVar('num', 'IMyShipController', (v) => `${v}.GetNaturalGravity().Length()`),
   'ext.ship.get_artificial_gravity': getBlockMemberIntoVar('num', 'IMyShipController', (v) => `${v}.GetArtificialGravity().Length()`),

@@ -11,24 +11,33 @@ function emit(id: string, properties: Record<string, string> = {}) {
 describe('extendedEmitters coverage', () => {
   it('every table entry is a callable function', () => {
     const ids = Object.keys(extendedEmitters)
-    expect(ids.length).toBeGreaterThan(120)
+    expect(ids.length).toBeGreaterThan(110)
     for (const id of ids) expect(typeof extendedEmitters[id]).toBe('function')
   })
 })
 
-describe('ext.var.divide', () => {
-  it('guards against division by zero instead of emitting one', () => {
-    const { emit: e } = emit('ext.var.divide', { Name: 'x', Value: '0' })
-    expect(e.kind).toBe('raw')
-    const statements = statementsOf(e)
-    expect(statements[0]).toContain('if ((0) == 0)')
-    expect(statements[0]).toContain('Echo("Divide by zero:')
-    expect(statements[1]).toContain('_num["x"] = GetNum("x") / (0);')
+describe('ext.bool.if (merged If Bool Variable True/False)', () => {
+  it('switches negation on Value', () => {
+    const t = emit('ext.bool.if', { Name: 'flag', Value: 'True' })
+    expect(expressionOf(t.emit)).toBe('GetBool("flag")')
+    const f = emit('ext.bool.if', { Name: 'flag', Value: 'False' })
+    expect(expressionOf(f.emit)).toBe('!GetBool("flag")')
+  })
+})
+
+describe('ext.generic.if_bool / ext.generic.if_float (merged True/False, Above/Below)', () => {
+  it('if_bool switches negation on Value', () => {
+    const t = emit('ext.generic.if_bool', { BlockName: 'B', PropertyId: 'P', Value: 'True' })
+    const f = emit('ext.generic.if_bool', { BlockName: 'B', PropertyId: 'P', Value: 'False' })
+    expect(expressionOf(t.emit)).not.toContain('!(')
+    expect(expressionOf(f.emit)).toContain('!(')
   })
 
-  it('divides normally for a non-zero divisor', () => {
-    const { emit: e } = emit('ext.var.divide', { Name: 'x', Value: '4' })
-    expect(statementsOf(e)[1]).toContain('GetNum("x") / (4)')
+  it('if_float switches operator on Direction', () => {
+    const above = emit('ext.generic.if_float', { BlockName: 'B', PropertyId: 'P', Value: '5', Direction: 'Above' })
+    const below = emit('ext.generic.if_float', { BlockName: 'B', PropertyId: 'P', Value: '5', Direction: 'Below' })
+    expect(expressionOf(above.emit)).toContain('> 5')
+    expect(expressionOf(below.emit)).toContain('< 5')
   })
 })
 

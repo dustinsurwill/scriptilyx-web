@@ -5,23 +5,127 @@
 
 ## Status
 
-**Milestone 6 — Persistence in progress.** Autosave (debounced localStorage
-write + restore-on-load), Save/Open (`.segraph`/`.json` via Blob download +
-file input), Export Script (`.cs` download) and Copy Script (clipboard) are
-in; undo/redo is a real action-based history in the Zustand store
-(`checkpoint()`/`undo()`/`redo()`), with continuous edits (node drags,
-property-field typing) collapsed into one checkpoint per gesture rather than
-one per pixel/keystroke. Verified end-to-end in-browser: add/undo/redo,
-Save → Open round-trip, autosave surviving a reload.
+**Milestone 7.2 in progress.** Landed so far: merged 22 redundant on/off
+preset pairs (`SetBlockEnabled`, `SetGroupEnabled`, `SetRotorEnabled`, etc.)
+into single `Enabled`-combo nodes, folded the AI-Block/Event-Controller/
+Button-Command presets into their existing generic equivalents, added a
+general-purpose `Number Compare` node (`>`, `<`, `>=`, `<=`, `==`, `!=`),
+and merged the 7 **Above/Below threshold pairs** (Battery, Gas Tank, Cargo,
+Room Oxygen, Ship Speed, Jump Drive Charge, Piston Position) into single
+`Direction`-combo (`Above`/`Below`) nodes via a new `blockThresholdCondition`
+emitter factory — each family previously dispatched through a different
+codegen path (plain `ActionType`, `ExtendedBuiltin` id-keyed, or a one-off
+`ActionType` like `BatteryBelow`/`CargoPercentBelow`), now unified onto 7
+new dedicated `ActionType`s (`BatteryThreshold`, `GasTankThreshold`, etc.).
+Also investigated the **Set-\[Type\]-Property family**
+(`SetTerminalBool`/`SetTerminalFloat`, ~28 Wheel-specific presets): most of
+it (Float presets like `Wheel Set Power`/`Wheel Set Friction`, and the
+3-way Override presets) turned out to be genuinely distinct — each targets
+a different terminal property or has more than two states, so they're
+convenience shortcuts, not duplicates. But 5 of the Bool presets
+(`Wheel Propulsion/Steering/Brake/Invert Steering/Invert Propulsion
+On`+`Off`) *were* the exact same on/off-pair duplication as the Enabled
+family — merged those too. Catalog: 346 → 298 node definitions.
+
+A `remapLegacyGraph()` importer (`src/lib/legacyImport.ts`, table-driven
+from `src/data/legacyNodeRemap.ts`, 83 entries) rewrites any retired id
+onto its replacement — wired into both Open (`Toolbar.tsx`) and autosave
+restore (`graphStore.ts`) — so old `.segraph` files (including real
+desktop-app exports) keep working. Verified in-browser after each merge
+pass: a retired-id `.segraph` opens with a working, correctly-wired
+replacement node and generates correct code.
+
+**Property-as-input, phase 1 (interpolation) done**, including a variable
+registry so the `num:`/`text:`/`bool:` prefix is no longer required for a
+variable the graph already declares. `resolvableBool`/`resolvableNumber`
+(`factories.ts`) let a bool/number property be either a literal or a
+whole-value `{name}` variable reference — the same `{...}` syntax Echo/
+LCD-text already used mid-string, just applied to a property's entire
+value. Wired into `enabledValue`/`lockedValue` (covers all ~20 merged
+Enabled/Locked nodes from this milestone in one place), `SetTerminalBool`/
+`SetTerminalFloat`, and `NumberCompare`/the Above-Below threshold nodes'
+value key. PropertyPanel got a `{ }`/`Fixed` toggle button next to combo/
+bool fields so this is reachable from the UI, not just by hand-editing a
+save file — normally those fields are a fixed `<select>` with no room to
+type a reference.
+
+`src/lib/variableRegistry.ts` derives every declared variable name and its
+type from the ~45 node kinds that create or reference one (`Set Number/
+Text/Bool Variable`, `Calculate`, the `Get X into a variable` family,
+`Save`/`Load Variable`'s `Type` combo, ...) — a role table keyed by
+`ActionType` (or `DefinitionId` for `ExtendedBuiltin` nodes, mirroring
+`registry.ts`'s own dispatch split), preferring a declaring node's kind
+over a merely-referencing one for the same name. Three places consume it:
+
+- **Dropped prefix**: `resolveInterpolationHole` (`factories.ts`) now
+  checks `ctx.variableKind(name)` before falling back to the call site's
+  default kind, so `{docked}` resolves to `GetBool(...)` automatically
+  once something has declared `docked` as a bool — no `{bool:docked}`
+  needed. `EmitContext` grew a `variableKind` field for this;
+  `generateScript` builds the registry once per call and passes it
+  through. An unregistered name still falls back to the old
+  default-to-`num` behavior, so nothing broke for names the registry
+  doesn't know about.
+- **Picker UI**: `PropertyPanel`'s new `VariablePicker` — a `<select>`
+  grouped by kind — shown next to every field that can take a variable
+  reference (multiline/help-tagged text fields in "append" mode; number
+  fields and the combo/bool manual-`{ }` field in "replace" mode).
+  Picking a name inserts a plain `{name}`, no prefix, since dropping the
+  prefix is exactly what the registry is for.
+- **Duplicate-type warning**: `getGraphIssues` now surfaces each of the
+  registry's `conflicts` (the same name used as two different kinds
+  somewhere in the graph — e.g. a `Set Number Variable "x"` alongside a
+  `Set Bool Variable "x"`) as a validation warning, since that's a real
+  bug (both write into the *same* shared field once field-promotion runs)
+  that was previously invisible until you read the generated code.
+
+Not exhaustive by design — a node kind not in the role table just doesn't
+contribute to the registry; a `{name}` reference to it still works, only
+without prefix-dropping or picker/conflict support until it's added.
+**Phase 2 (first-class data ports) is still just the design note below**,
+not started — flagged as the place to revisit if a node needs more than
+one variable input at once (interpolation only covers "this whole
+property is a variable", not wiring multiple inputs into one node).
+
+**Follow-up fixes/merges on top of the registry work**: the
+`VariablePicker` dropdown now takes a `kinds` filter so a bool-only field
+(Enabled/Locked) only lists bool variables and a number field only lists
+number variables — it was showing all three kinds regardless of what the
+field could actually use. While fixing that, found the `{ }`
+variable-reference toggle was showing on *every* combo property, including
+non-boolean ones like `Operator`/`Direction` — those are read as raw
+literals compared against known option strings (never through
+`resolvableBool`), so a `{name}` there would've silently failed to match
+and fallen back to that emitter's default. Now gated to combo properties
+whose `Options` are exactly `["true","false"]`.
+
+Also merged three more catalog duplicates in the same on-going cleanup:
+`Add`/`Subtract`/`Multiply`/`Divide Number Variable` → one **Number Math**
+node (`Name`, `Operator: +|-|*|/`, `Value` — Divide keeps its
+divide-by-zero guard), and **Number Equals** → folded into **Number
+Compare** by adding a `Tolerance` property used only for `==`/`!=`
+(defaults to `0`, i.e. exact equality, so old graphs/tests are unaffected).
+Added a genuinely new node, **Append Text Variable** (`Name += Value`),
+since there wasn't one — `Set Text Variable`'s `Value` didn't even support
+`{name}` interpolation before this (now fixed, via `interpolatedTextExpr`),
+so appending text required manually referencing a variable's own name
+inside its own Set node, which is exactly the "unclear" workaround style
+this ships a real node for instead. Catalog: 298 → 295 (4 nodes removed
+for 1 Number Math + Tolerance-fold, +1 for Append Text Variable). Legacy
+importer gained `renameProperties` support (`AddNumberVariable`'s
+`AddValue` → Number Math's `Value`) since this was the first merge where
+the old and new property key names actually differ.
 
 - [x] Milestone 1 — Repo/pipeline skeleton (merged in #1)
 - [x] Milestone 2 — Data layer (merged in #2)
 - [x] Milestone 3 — Canvas (merged in #3)
 - [x] Milestone 4 — Codegen (merged in #4)
 - [x] Milestone 5 — Minify (merged in #5)
-- [ ] Milestone 6 — Persistence (in progress)
+- [x] Milestone 6 — Persistence (merged in #6)
 - [ ] Milestone 7.1 — Stretch: node packs, wizards
-- [ ] Milestone 7.2 — Stretch: cleaned-up native node catalog + `.segraph` import
+- [ ] Milestone 7.2 — Stretch: cleaned-up native node catalog + `.segraph`
+      import (in progress — preset-pair + Above/Below merges and the
+      importer are done; property-as-input is still a design question)
 - [ ] Milestone 7.3 — Stretch: `.segraph` export (legacy-compatible), may end
       up documented-only
 
@@ -206,34 +310,224 @@ from it, not introduced by this project. Decisions on **how** to fix it are
 being made now so the design doc in 7.2 doesn't drift from what actually
 shipped in Milestone 2's data layer:
 
-- **Cross-category duplication**: `SetBlockEnabled`, `SetSensorEnabled`,
-  `SetHingeEnabled`, `SetRotorEnabled`, `SetMergeBlockEnabled`, etc. are
-  distinct `ActionType`s that all compile to the identical `block.Enabled =
-  value` — collapse to one `ActionType`, one emitter, keep (or merge) the
-  discoverable per-context palette entries pointing at it.
-- **Missing comparison operators**: no `>=`, `<=`, or `!=` exists anywhere
-  in the library. Add a general `Number Compare` node with a full operator
-  combo, replacing `If Number Greater/Less Than`.
-- **Above/Below pairs**: Battery, Gas Tank, Cargo, Room Oxygen, Ship Speed,
-  Jump Drive Charge, and Piston Position each ship as two nodes differing
-  only in comparison direction — collapse each pair into one node with an
-  `Above|Below` combo (same pattern as the existing `Enabled` combo).
-- **Preset-only duplicates**: `Button Command: dock/mine/startup` share the
-  exact `ActionType`/property shape as plain `Button Command`, differing
-  only in the `Argument` default — fold into one node; keep the presets (if
-  wanted) as palette quick-add shortcuts that don't need separate catalog
-  entries.
+- **Cross-category duplication** ✅ done — `SetBlockEnabled`,
+  `SetSensorEnabled`, `SetHingeEnabled`, `SetRotorEnabled`,
+  `SetMergeBlockEnabled`, and 9 other `*Enabled`/boolean-toggle
+  `ActionType`s already compiled to identical code across their on/off
+  preset pairs; each pair is now one node with an `Enabled`/`Locked` combo
+  (kept per-context, e.g. `Light Enabled` vs `Thruster Enabled`, for
+  palette discoverability — not collapsed across contexts). AI-Block and
+  Event-Controller presets (which already had a generic combo node
+  alongside their on/off pairs) had the presets deleted outright rather
+  than re-merged. The same duplication also turned up in the Wheel
+  category outside the `*Enabled` naming pattern — `Wheel Propulsion/
+  Steering/Brake/Invert Steering/Invert Propulsion On`+`Off` are
+  `SetTerminalBool` presets differing only in their `PropertyId`/`Value`
+  defaults, exactly like `SetBlockEnabled`'s pairs — merged those 5 pairs
+  the same way. The other ~23 Wheel presets (`Wheel Set Power`/`Friction`/
+  etc., and the 3-way Override presets) are each a genuinely different
+  terminal property, not duplicates, so those were left alone. See the
+  Status section above for the running catalog count.
+- **Missing comparison operators** ✅ done — added a general `Number
+  Compare` node (`ActionType: NumberCompare`) with a full operator combo
+  (`>`, `<`, `>=`, `<=`, `==`, `!=`); `If Number Greater/Less Than` are
+  untouched (existing graphs keep working) rather than replaced.
+- **Above/Below pairs** ✅ done — Battery, Gas Tank, Cargo, Room Oxygen,
+  Ship Speed, Jump Drive Charge, and Piston Position each shipped as two
+  nodes differing only in comparison direction, fragmented across three
+  different codegen dispatch mechanisms (plain `ActionType` emitters,
+  `ExtendedBuiltin` id-keyed emitters, one-off `ActionType`s like
+  `CargoPercentBelow`/`BatteryBelow`). Unified onto 7 new dedicated
+  `ActionType`s (`BatteryThreshold`, `GasTankThreshold`,
+  `RoomOxygenThreshold`, `CargoThreshold`, `ShipSpeedThreshold`,
+  `JumpDriveChargeThreshold`, `PistonPositionThreshold`), each using the
+  new `blockThresholdCondition` factory (`factories.ts`/`emitters.ts`)
+  that reads a `Direction: Above|Below` combo property instead of baking
+  the operator into a separate node.
+- **Preset-only duplicates** ✅ done — `Button Command: dock/mine/startup`
+  deleted; their `Argument` values are preserved by the legacy importer as
+  property overrides onto the plain `Button Command` node.
 - **Fused vs. composable duplication**: some measurements (e.g. battery
-  charge) ship both as a fused check (`Battery Below %`) *and* as a
-  composable primitive (`Get Battery Charge %` + a comparison) that does
-  the same thing. Keep the fused, single-node form as the canonical path
-  for simple threshold checks — per the `Above|Below` merge above, one
+  charge) ship both as a fused check (now `Battery Threshold`, after the
+  Above/Below merge above) *and* as a composable primitive (`Get Battery
+  Charge %` + a comparison) that does the same thing. Keep the fused,
+  single-node form as the canonical path for simple threshold checks — one
   node beats two wired together for the common case — and keep `Get X %`
   around only for cases that need the raw value for something else (LCD
   display, custom math). Importing a legacy fused-check node is then a
   1:1 relabel onto the merged node, not a graph rewrite; a rewrite is
   only needed for legacy nodes that have no fused equivalent at all in
-  the cleaned catalog.
+  the cleaned catalog. Not revisited further this pass — already true of
+  the current catalog, nothing left to merge here.
+
+### Property-as-input
+
+Raised while working 7.2: a `NodeDefinition` property (e.g.
+`SetBlockEnabled`'s `Enabled`) used to be a literal baked in at
+graph-design time only — no way to wire it from something computed
+elsewhere in the graph (a variable, a check's result, the PB argument).
+Two ways to get there, different cost:
+
+- **Interpolated property values** ✅ shipped — properties stay plain
+  strings, but `resolvableBool`/`resolvableNumber` (`factories.ts`)
+  recognize a whole-value `{name}`/`{bool:name}`/`{num:name}` reference
+  (reusing the interpolation syntax Echo/LCD-text already had for
+  mid-string references) and emit `GetBool(...)`/`GetNum(...)` instead of
+  a literal. No new port/edge concept, no store changes — just this check
+  ahead of literal-izing a value, plus a `{ }`/`Fixed` toggle button in
+  `PropertyPanel` next to combo/bool fields (which are otherwise a fixed
+  `<select>` with no room to type a reference). Small, shipped fast, but
+  it's a convention layered on strings rather than a first-class graph
+  connection — React Flow doesn't draw a wire for the dependency, and a
+  node can only take **one** such reference per property (whatever fits in
+  that one string field).
+- **Data ports** — not started; the follow-up if interpolation turns out
+  to be limiting. Add a second port kind beyond today's pure control-flow
+  `Handle`s (`Next`/`True`/`False`/`In`), so e.g. `SetBlockEnabled` gets a
+  `Value` input handle wireable from a `Get Bool Variable` node's output —
+  and unlike a single interpolated string, a node can expose **as many
+  data-input handles as it has properties**, each wired independently (a
+  node needing three inputs, e.g. a fused `Number Compare`-style node fed
+  by three different variables, isn't expressible with interpolation
+  alone). Correct long-term shape (matches how most node-graph tools do
+  this) but a large change: React Flow node component needs a second
+  handle type, `NodeConnection`/the store need to distinguish control vs.
+  data edges, codegen needs to resolve a data edge to an expression
+  instead of a statement, and validation needs new rules (data ports must
+  resolve to exactly one source, no cycles). Not mutually exclusive with
+  interpolation — the `{name}` syntax could stay as what an eventual data
+  port's codegen resolves to internally, or as the escape hatch for nodes
+  that don't warrant a dedicated port.
+
+### If-node consolidation: audit + merge (True/False, Above/Below pairs)
+
+Prompted by a direct question about whether the 76-ish "✅ Checks"-category
+nodes (plus scattered `If...Above/Below`/`...True/False` pairs in other
+categories) still had unmerged duplicate-pair debt after the earlier
+Above/Below passes. A full sweep (every node whose Title ends in
+`Above`/`Below`/`True`/`False`, checked for a same-shape sibling with the
+opposite suffix) turned up 8 more pairs, all merged the same way as the
+earlier Above/Below work — a `Direction: Above|Below` or `Value: True|False`
+combo replacing two nodes:
+
+- **Terminal-property checks** (AI Block, Event Controller, and the
+  generic "Any" nodes each had their own True/False + Above/Below pairs,
+  since all three reuse the same `GetValue<T>` terminal-property shape):
+  `If AI/Event Controller/Any Bool Property` (was `*BoolTrue`/`*BoolFalse`)
+  and `If AI/Event Controller/Any Float Property` (was `*FloatAbove`/
+  `*FloatBelow`) — 6 pairs → 6 nodes, via two new shared factories
+  (`terminalBoolPropertyCondition`/`terminalFloatThresholdCondition` in
+  `factories.ts`, mirrored in `emitters.ts`'s local copy for the AI/Event
+  Controller entries, matching the existing duplication convention between
+  those two files).
+- **Rotor RPM/Angle, Hinge Angle** thresholds — `Rotor RPM Threshold`,
+  `Rotor Angle Threshold`, `Hinge Angle Threshold` replace their Above/
+  Below pairs via the existing `blockThresholdCondition` factory (same one
+  the original 7 Above/Below merges used).
+- **If Bool Variable** — `ext.bool.if_true`/`ext.bool.if_false` (checks a
+  *variable*, not a terminal property — different emitter shape from the
+  above) merged into one node with a `Value: True|False` combo.
+
+285 catalog nodes (was 295). The sweep found no more True/False or
+Above/Below duplicate pairs. (Deliberately *not* touched: state-named
+pairs like `If Piston Fully Extended`/`Retracted` or `If Air Vent
+Pressurized`/`Depressurized` — those aren't simple direction/boolean flips
+of the same measurement the way Above/Below pairs are, so a generalized
+merge there would be a `Door State`-style named-state combo, a different
+and separate design question from what was asked here.)
+
+A follow-up question ("isn't `If [block type] Enabled/Working` the same
+as `If Block Enabled/Working`?") caught a related but different
+duplication the Above/Below sweep didn't check for: **identical emitters
+under different names**, not same-shape opposite-direction pairs.
+`IfAiBlockEnabled`/`IfEventControllerEnabled` and `ext.timer.if_enabled`
+all called the exact same `blockCondition('IMyFunctionalBlock', v =>
+`${v}.Enabled`)` as `If Block Enabled` — same for `*Working` and
+`isWorkingCondition()`. Confirmed by grepping every `blockCondition`/
+`isWorkingCondition` call site for duplicate arguments rather than by
+title pattern. Deleted `If AI/Event Controller Block Enabled/Working` and
+`If Timer Enabled` outright (same treatment as the earlier `Set AI Block
+Enabled`-style preset folds — a generic equivalent already existed, so no
+merged node needed, just delete + enrich the generic one's `Search` +
+legacy remap). Also let `isWorkingCondition` itself be deleted from
+`emitters.ts` as dead code once nothing called it anymore. 280 catalog
+nodes now. Worth flagging as a **different kind of check** to keep running
+periodically as the catalog evolves — the Above/Below sweep (same title,
+opposite suffix) wouldn't have caught this, since `If AI Block Enabled`
+and `If Block Enabled` don't share a title pattern at all, only an
+identical emitter call.
+
+### Property library for Get/Set-Property nodes (documented, not started)
+
+Raised as real friction: `Set Any Bool/Float/Int/Text Property` and the AI
+Block/Event Controller property nodes all take a free-text `PropertyId`
+with zero autocomplete or validation — a user has to already know the
+exact terminal property id (`"HasTarget"`, `"IsTriggered"`, ...) for the
+specific block type they're targeting, with no in-app reference. Asked
+whether the property's *type* could at least be inferred from a library —
+answer: only if that library exists as structured data, which it currently
+doesn't anywhere in this repo.
+
+The path: `docs/codegen-api-notes.md` already cites two public API
+reference sources used while building the `ExtendedBuiltin` emitters —
+https://malforge.github.io/spaceengineers/pbapi/ (third-party, reportedly
+more complete than the official docs for some blocks) and
+https://keensoftwarehouse.github.io/SpaceEngineersModAPI/ (official). A
+future `src/data/terminalProperties.json` sourced from those two
+(interface → `{ PropertyId: "bool"|"float"|"long"|"string" }`, in the same
+spirit as `nodeLibrary.json` — factual signature data, not copied prose) is
+what an autocomplete/type-check would key off. Once that data exists:
+- **PropertyPanel** could offer a `<datalist>`/autocomplete on `PropertyId`
+  scoped to the node's target interface (would need each `Set/Get Any *
+  Property` node to declare which interface it targets, e.g. via a new
+  `NodeDefinition` field or a small id→interface lookup next to the JSON).
+  - **Type inference** (the second half of the question) becomes possible
+  once the library exists: look up `PropertyId` in the per-interface map
+  and either warn if the node's own type (`SetTerminalBool` vs
+  `SetTerminalFloat`) doesn't match, or — further out — collapse the four
+  typed `Set Any * Property` nodes into one that infers `T` from the
+  chosen `PropertyId` instead of needing four separate typed nodes.
+
+Not started — this is a real, scoped data-curation project (going through
+two API references block-by-block) before any UI work makes sense.
+
+### Dynamic-output-count Switch node (documented, not started)
+
+Asked how hard a Switch/Match node would be — one where the user picks the
+number of output cases in the UI (not the compiled code; codegen already
+handles however many ports a node instance ends up with). More tractable
+than it sounds, because two of the three needed pieces already exist:
+
+- `ScriptGraphNode` (`src/components/ScriptGraphNode.tsx`) already renders
+  `scriptNode.OutputPorts` — the **per-instance** array — not
+  `definition.OutputPorts`, so the canvas already supports a node whose
+  port count differs from its catalog definition's.
+- `Command Router`/`Number Greater Router` already prove the codegen
+  pattern: loop over however many output ports exist, one `Property` per
+  port (`StartupArgument`, `Threshold2`, ...), emit one case/comparison
+  per port. A dynamic Switch's emitter is the same loop, just not
+  hardcoded to a fixed port list.
+
+What's actually missing: **nothing today lets a user add/remove ports on
+an existing node instance** — `ScriptNode.OutputPorts` is copied once from
+`NodeDefinition.OutputPorts` at add-time and never mutated afterward. That
+needs:
+1. A store action (`addOutputPort`/`removeOutputPort`, or a single
+   `setOutputPorts`) mutating both `OutputPorts` and the corresponding
+   per-case `Properties` entries on one `ScriptNode`.
+2. A "manage cases" control in `PropertyPanel` for this node specifically
+   — +/− buttons, each case getting a match-value field — plus a
+   match-mode choice (equals/dictionary dispatch vs. an if/else-if chain,
+   which differ slightly in emitted code: a `switch` needs distinct
+   constant case values, an if/else-if chain doesn't).
+3. A new emitter that reads however many `Case<N>Value` properties exist
+   (mirroring `Command Router`'s pattern) and emits the chosen
+   dispatch shape.
+
+Estimate: comparable in size to the Number Math/Number Compare work in
+this same milestone — one clearly-scoped new feature, not a
+foundational change, since the rendering and codegen precedents already
+exist. Not started.
 
 ## Workflow
 

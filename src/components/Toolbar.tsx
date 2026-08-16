@@ -3,6 +3,7 @@ import type { ChangeEvent, CSSProperties } from 'react'
 import type { GraphSaveData } from '../types/graph'
 import { useGraphStore } from '../store/graphStore'
 import { useGeneratedScript } from '../hooks/useGeneratedScript'
+import { remapLegacyGraph } from '../lib/legacyImport'
 
 const SAVE_FILENAME = 'script.segraph'
 
@@ -80,7 +81,7 @@ export function Toolbar() {
       if (!Array.isArray(data.Nodes) || !Array.isArray(data.Connections)) {
         throw new Error('Missing Nodes/Connections array')
       }
-      loadGraph(data)
+      loadGraph(remapLegacyGraph(data))
     } catch (err) {
       alert(`Couldn't open "${file.name}": ${err instanceof Error ? err.message : 'invalid file'}`)
     }

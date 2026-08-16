@@ -1,5 +1,6 @@
 import type { NodeConnection, NodeDefinition, ScriptNode } from '../types/graph'
 import { findStartNodes, getReachableNodeIds } from './graph'
+import { buildVariableRegistry } from './variableRegistry'
 
 export type IssueSeverity = 'error' | 'warning'
 
@@ -80,6 +81,14 @@ export function getGraphIssues({
         message: `Connection references a missing node (${c.FromNodeId} -> ${c.ToNodeId}).`,
       })
     }
+  }
+
+  const { conflicts } = buildVariableRegistry(nodes)
+  for (const { name, kinds } of conflicts) {
+    issues.push({
+      severity: 'warning',
+      message: `Variable "${name}" is used as both ${kinds.join(' and ')} — pick one type, since each name is a single shared variable.`,
+    })
   }
 
   return issues

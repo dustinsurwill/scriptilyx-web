@@ -1,4 +1,5 @@
 import type { ScriptNode } from '../../types/graph'
+import type { VarKind } from '../variableRegistry'
 
 export interface CodegenOptions {
   /** Tick-budgeted state machine for graphs too large for one game tick.
@@ -19,6 +20,11 @@ export interface EmitContext {
   /** Statement that transfers control to the StartSection node with this
    * `SectionName`, respecting the active emission strategy. */
   callSection: (sectionName: string) => string
+  /** Resolved type for a variable name, from the graph-wide registry (see
+   * variableRegistry.ts) — lets a bare `{name}` interpolation hole (no
+   * `num:`/`text:`/`bool:` prefix) resolve to the right getter when the
+   * name is known, instead of always defaulting to "num". */
+  variableKind: (name: string) => VarKind | undefined
 }
 
 /** A node compiles to exactly one statement list (an "action"), one boolean

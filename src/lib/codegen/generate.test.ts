@@ -272,3 +272,35 @@ describe('professionalComments (Detailed Comments toggle)', () => {
     expect(source).toContain('// Prints a message')
   })
 })
+
+describe('variable interpolation drops the kind prefix for a known variable', () => {
+  it('a bare {name} in Echo text resolves to the registry-declared kind (bool), not the num default', () => {
+    const start = node({ ActionType: 'Start' })
+    const setBool = node({
+      ActionType: 'ExtendedBuiltin',
+      DefinitionId: 'ext.bool.set',
+      Properties: { Name: 'docked', Value: 'true' },
+    })
+    const echo = node({ ActionType: 'Echo', Properties: { Text: 'Docked: {docked}' } })
+    const nodes = [start, setBool, echo]
+    const connections = [wire(start, 'Next', setBool), wire(setBool, 'Next', echo)]
+
+    const { source } = generateScript(nodes, connections)
+    // promoteVariableStorage replaces GetBool("docked")/_bool["docked"] with a
+    // typed field, so a bool-kind resolution shows up as "Bool_docked" (and a
+    // wrongly-num-resolved reference would instead show up as "Num_docked").
+    expect(source).toContain('bool Bool_docked;')
+    expect(source).toContain('Bool_docked')
+    expect(source).not.toContain('Num_docked')
+  })
+
+  it('an unregistered {name} still falls back to num, unchanged from before', () => {
+    const start = node({ ActionType: 'Start' })
+    const echo = node({ ActionType: 'Echo', Properties: { Text: '{mystery}' } })
+    const nodes = [start, echo]
+    const connections = [wire(start, 'Next', echo)]
+
+    const { source } = generateScript(nodes, connections)
+    expect(source).toContain('double Num_mystery;')
+  })
+})

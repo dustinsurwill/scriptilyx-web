@@ -1,5 +1,5 @@
 import type { ScriptNode } from '../../types/graph'
-import { interpolatedTextExpr } from './factories'
+import { interpolatedTextExpr, resolvableNumber } from './factories'
 import { sanitizeIdentifier, stringLiteral } from './format'
 import type { NodeEmitter } from './types'
 
@@ -159,12 +159,31 @@ export const setNumberVariableEmitter: NodeEmitter = (node, ctx) => {
   }
 }
 
-export const addNumberVariableEmitter: NodeEmitter = (node, ctx) => {
+const NUMBER_MATH_OPERATORS = new Set(['+', '-', '*', '/'])
+
+/** Replaces Add/Subtract/Multiply/Divide Number Variable with one node —
+ * `Name <Operator>= Value` — preserving Divide's guard against a zero
+ * divisor (silently no-op-ing the update, same as the retired node did,
+ * rather than crashing the script on a bad Value). */
+export const numberMathEmitter: NodeEmitter = (node, ctx) => {
   ctx.useHelper('Vars')
   const name = stringLiteral(prop(node, 'Name'))
+  const operator = prop(node, 'Operator')
+  const op = NUMBER_MATH_OPERATORS.has(operator) ? operator : '+'
+  const value = resolvableNumber(node, 'Value', ctx)
+  if (op === '/') {
+    return {
+      kind: 'raw',
+      statements: [
+        `if ((${value}) == 0) { Echo("Divide by zero: " + ${name}); }`,
+        `else { _num[${name}] = GetNum(${name}) / (${value}); }`,
+        ctx.next(node, 'Next'),
+      ],
+    }
+  }
   return {
     kind: 'action',
-    statements: [`_num[${name}] = GetNum(${name}) + (${prop(node, 'AddValue') || '0'});`, ctx.next(node, 'Next')],
+    statements: [`_num[${name}] = GetNum(${name}) ${op} (${value});`, ctx.next(node, 'Next')],
   }
 }
 
@@ -219,9 +238,21 @@ export const setTextVariableEmitter: NodeEmitter = (node, ctx) => {
   return {
     kind: 'action',
     statements: [
-      `_text[${stringLiteral(prop(node, 'Name'))}] = ${stringLiteral(prop(node, 'Value'))};`,
+      `_text[${stringLiteral(prop(node, 'Name'))}] = ${interpolatedTextExpr(node, ctx, 'Value')};`,
       ctx.next(node, 'Next'),
     ],
+  }
+}
+
+/** `Name += Value` for text variables — Value supports the same `{name}`
+ * interpolation as Set Text Variable/Echo, so this can build up a string
+ * from other variables too, not just literal text. */
+export const appendTextVariableEmitter: NodeEmitter = (node, ctx) => {
+  ctx.useHelper('Vars')
+  const name = stringLiteral(prop(node, 'Name'))
+  return {
+    kind: 'action',
+    statements: [`_text[${name}] = GetText(${name}) + ${interpolatedTextExpr(node, ctx, 'Value')};`, ctx.next(node, 'Next')],
   }
 }
 
@@ -233,6 +264,25 @@ export const ifNumberLessThanEmitter: NodeEmitter = (node, ctx) => {
 export const ifNumberGreaterThanEmitter: NodeEmitter = (node, ctx) => {
   ctx.useHelper('Vars')
   return { kind: 'condition', expression: `GetNum(${stringLiteral(prop(node, 'Name'))}) > ${prop(node, 'Value') || '0'}` }
+}
+
+const NUMBER_COMPARE_OPERATORS = new Set(['>', '<', '>=', '<=', '==', '!='])
+
+export const numberCompareEmitter: NodeEmitter = (node, ctx) => {
+  ctx.useHelper('Vars')
+  const operator = prop(node, 'Operator')
+  const op = NUMBER_COMPARE_OPERATORS.has(operator) ? operator : '>'
+  const left = `GetNum(${stringLiteral(prop(node, 'Name'))})`
+  const right = resolvableNumber(node, 'Value', ctx)
+  // Tolerance only makes sense for equality — floats are rarely exactly
+  // equal, which is exactly what the retired "Number Equals" node existed
+  // to work around (see docs/PLAN.md -> "Native catalog cleanup").
+  if (op === '==' || op === '!=') {
+    const tolerance = resolvableNumber(node, 'Tolerance', ctx)
+    const within = `Math.Abs(${left} - (${right})) <= (${tolerance})`
+    return { kind: 'condition', expression: op === '==' ? within : `!(${within})` }
+  }
+  return { kind: 'condition', expression: `${left} ${op} ${right}` }
 }
 
 export const ifTextEqualsEmitter: NodeEmitter = (node, ctx) => {

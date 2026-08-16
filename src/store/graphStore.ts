@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { GraphSaveData, NodeConnection, NodeDefinition, ScriptNode } from '../types/graph'
+import { remapLegacyGraph } from '../lib/legacyImport'
 
 interface Selection {
   nodeId: string | null
@@ -30,10 +31,11 @@ function readAutosave(): HistorySnapshot | null {
     if (!raw) return null
     const parsed = JSON.parse(raw) as GraphSaveData
     if (!Array.isArray(parsed.Nodes) || !Array.isArray(parsed.Connections)) return null
+    const remapped = remapLegacyGraph(parsed)
     return {
-      nodes: parsed.Nodes,
-      connections: parsed.Connections,
-      nextNodeNumber: parsed.NextNodeNumber ?? 1,
+      nodes: remapped.Nodes,
+      connections: remapped.Connections,
+      nextNodeNumber: remapped.NextNodeNumber ?? 1,
     }
   } catch {
     return null
