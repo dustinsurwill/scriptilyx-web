@@ -235,6 +235,18 @@ export const ifNumberGreaterThanEmitter: NodeEmitter = (node, ctx) => {
   return { kind: 'condition', expression: `GetNum(${stringLiteral(prop(node, 'Name'))}) > ${prop(node, 'Value') || '0'}` }
 }
 
+const NUMBER_COMPARE_OPERATORS = new Set(['>', '<', '>=', '<=', '==', '!='])
+
+export const numberCompareEmitter: NodeEmitter = (node, ctx) => {
+  ctx.useHelper('Vars')
+  const operator = prop(node, 'Operator')
+  const op = NUMBER_COMPARE_OPERATORS.has(operator) ? operator : '>'
+  return {
+    kind: 'condition',
+    expression: `GetNum(${stringLiteral(prop(node, 'Name'))}) ${op} ${prop(node, 'Value') || '0'}`,
+  }
+}
+
 export const ifTextEqualsEmitter: NodeEmitter = (node, ctx) => {
   ctx.useHelper('Vars')
   return {

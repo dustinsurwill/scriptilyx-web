@@ -24,6 +24,7 @@ const controlFlowEmitters: Record<string, NodeEmitter> = {
   SetTextVariable: logic.setTextVariableEmitter,
   IfNumberLessThan: logic.ifNumberLessThanEmitter,
   IfNumberGreaterThan: logic.ifNumberGreaterThanEmitter,
+  NumberCompare: logic.numberCompareEmitter,
   IfTextEquals: logic.ifTextEqualsEmitter,
   StartSection: logic.startSectionEmitter,
   CallSection: logic.callSectionEmitter,

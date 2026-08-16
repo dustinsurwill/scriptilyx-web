@@ -1,0 +1,72 @@
+// Auto-generated during the Milestone 7.2 native-catalog cleanup: maps node
+// ids retired from `nodeLibrary.json` (old on/off preset pairs, redundant
+// button-command presets) onto their replacement in the current catalog, so a
+// legacy `.segraph` opened here still resolves to a real node definition.
+// See docs/PLAN.md -> "Native catalog cleanup" for the design rationale.
+export interface LegacyNodeRemap {
+  newId: string
+  /** Property overrides to apply on top of the legacy node's own saved properties. */
+  properties: Record<string, string>
+}
+
+export const LEGACY_NODE_ID_REMAP: Record<string, LegacyNodeRemap> = {
+  "block.turn_on": { newId: "block.set_enabled", properties: { "Enabled": "true" } },
+  "block.turn_off": { newId: "block.set_enabled", properties: { "Enabled": "false" } },
+  "block.group_on": { newId: "block.group_set_enabled", properties: { "Enabled": "true" } },
+  "block.group_off": { newId: "block.group_set_enabled", properties: { "Enabled": "false" } },
+  "block.light_on": { newId: "block.light_set_enabled", properties: { "Enabled": "true" } },
+  "block.light_off": { newId: "block.light_set_enabled", properties: { "Enabled": "false" } },
+  "flight.thruster_on": { newId: "flight.thruster_set_enabled", properties: { "Enabled": "true" } },
+  "flight.thruster_off": { newId: "flight.thruster_set_enabled", properties: { "Enabled": "false" } },
+  "flight.gyro_override_on": { newId: "flight.gyro_override_set", properties: { "Enabled": "true" } },
+  "flight.gyro_override_off": { newId: "flight.gyro_override_set", properties: { "Enabled": "false" } },
+  "mechanical.rotor_on": { newId: "mechanical.rotor_set_enabled", properties: { "Enabled": "true" } },
+  "mechanical.rotor_off": { newId: "mechanical.rotor_set_enabled", properties: { "Enabled": "false" } },
+  "mechanical.rotor_lock_on": { newId: "mechanical.rotor_lock_set", properties: { "Locked": "true" } },
+  "mechanical.rotor_lock_off": { newId: "mechanical.rotor_lock_set", properties: { "Locked": "false" } },
+  "utility.gas_stockpile_on": { newId: "utility.gas_stockpile_set", properties: { "Enabled": "true" } },
+  "utility.gas_stockpile_off": { newId: "utility.gas_stockpile_set", properties: { "Enabled": "false" } },
+  "utility.airvent_depressurize_on": { newId: "utility.airvent_depressurize_set", properties: { "Enabled": "true" } },
+  "utility.airvent_depressurize_off": { newId: "utility.airvent_depressurize_set", properties: { "Enabled": "false" } },
+  "tool.drill_on": { newId: "tool.drill_set_enabled", properties: { "Enabled": "true" } },
+  "tool.drill_off": { newId: "tool.drill_set_enabled", properties: { "Enabled": "false" } },
+  "tool.welder_on": { newId: "tool.welder_set_enabled", properties: { "Enabled": "true" } },
+  "tool.welder_off": { newId: "tool.welder_set_enabled", properties: { "Enabled": "false" } },
+  "tool.grinder_on": { newId: "tool.grinder_set_enabled", properties: { "Enabled": "true" } },
+  "tool.grinder_off": { newId: "tool.grinder_set_enabled", properties: { "Enabled": "false" } },
+  "production.assembler_on": { newId: "production.assembler_set_enabled", properties: { "Enabled": "true" } },
+  "production.assembler_off": { newId: "production.assembler_set_enabled", properties: { "Enabled": "false" } },
+  "production.refinery_on": { newId: "production.refinery_set_enabled", properties: { "Enabled": "true" } },
+  "production.refinery_off": { newId: "production.refinery_set_enabled", properties: { "Enabled": "false" } },
+  "merge.block_on": { newId: "merge.block_set_enabled", properties: { "Enabled": "true" } },
+  "merge.block_off": { newId: "merge.block_set_enabled", properties: { "Enabled": "false" } },
+  "sensor.block_on": { newId: "sensor.block_set_enabled", properties: { "Enabled": "true" } },
+  "sensor.block_off": { newId: "sensor.block_set_enabled", properties: { "Enabled": "false" } },
+  "hinge.block_on": { newId: "hinge.block_set_enabled", properties: { "Enabled": "true" } },
+  "hinge.block_off": { newId: "hinge.block_set_enabled", properties: { "Enabled": "false" } },
+  "hinge.lock_on": { newId: "hinge.lock_set", properties: { "Locked": "true" } },
+  "hinge.lock_off": { newId: "hinge.lock_set", properties: { "Locked": "false" } },
+  "power.jump_drive_on": { newId: "power.jump_drive_set_enabled", properties: { "Enabled": "true" } },
+  "power.jump_drive_off": { newId: "power.jump_drive_set_enabled", properties: { "Enabled": "false" } },
+  "power.jump_drive_recharge_on": { newId: "power.jump_drive_recharge_set", properties: { "Enabled": "true" } },
+  "power.jump_drive_recharge_off": { newId: "power.jump_drive_recharge_set", properties: { "Enabled": "false" } },
+  "sorter.on": { newId: "sorter.set_enabled", properties: { "Enabled": "true" } },
+  "sorter.off": { newId: "sorter.set_enabled", properties: { "Enabled": "false" } },
+  "wheel.on": { newId: "wheel.set_enabled", properties: { "Enabled": "true" } },
+  "wheel.off": { newId: "wheel.set_enabled", properties: { "Enabled": "false" } },
+  "ai.flight_on": { newId: "ai.set_block_enabled", properties: {  } },
+  "ai.flight_off": { newId: "ai.set_block_enabled", properties: {  } },
+  "ai.offensive_on": { newId: "ai.set_block_enabled", properties: {  } },
+  "ai.offensive_off": { newId: "ai.set_block_enabled", properties: {  } },
+  "ai.defensive_on": { newId: "ai.set_block_enabled", properties: {  } },
+  "ai.defensive_off": { newId: "ai.set_block_enabled", properties: {  } },
+  "ai.basic_task_on": { newId: "ai.set_block_enabled", properties: {  } },
+  "ai.basic_task_off": { newId: "ai.set_block_enabled", properties: {  } },
+  "ai.recorder_on": { newId: "ai.set_block_enabled", properties: {  } },
+  "ai.recorder_off": { newId: "ai.set_block_enabled", properties: {  } },
+  "event_controller_on": { newId: "event_controller.set_enabled", properties: {  } },
+  "event_controller_off": { newId: "event_controller.set_enabled", properties: {  } },
+  "button.command_startup": { newId: "button.command", properties: { "Argument": "startup" } },
+  "button.command_dock": { newId: "button.command", properties: { "Argument": "dock" } },
+  "button.command_mine": { newId: "button.command", properties: { "Argument": "mine" } },
+}

@@ -5,23 +5,41 @@
 
 ## Status
 
-**Milestone 6 — Persistence in progress.** Autosave (debounced localStorage
-write + restore-on-load), Save/Open (`.segraph`/`.json` via Blob download +
-file input), Export Script (`.cs` download) and Copy Script (clipboard) are
-in; undo/redo is a real action-based history in the Zustand store
-(`checkpoint()`/`undo()`/`redo()`), with continuous edits (node drags,
-property-field typing) collapsed into one checkpoint per gesture rather than
-one per pixel/keystroke. Verified end-to-end in-browser: add/undo/redo,
-Save → Open round-trip, autosave surviving a reload.
+**Milestone 7.2 in progress.** First slice landed: merged 22 redundant
+on/off preset pairs (`SetBlockEnabled`, `SetGroupEnabled`, `SetRotorEnabled`,
+etc. — see "Native catalog cleanup" below) into single `Enabled`-combo
+nodes, folded the AI-Block/Event-Controller preset pairs and the three
+`Button Command: <preset>` nodes into their existing generic equivalents,
+and added a general-purpose `Number Compare` node (`>`, `<`, `>=`, `<=`,
+`==`, `!=`) closing the missing-operator gap. Catalog: 346 → 310 node
+definitions. A `remapLegacyGraph()` importer (`src/lib/legacyImport.ts`,
+table-driven from `src/data/legacyNodeRemap.ts`) rewrites any of the 59
+retired ids onto their replacement — wired into both Open (`Toolbar.tsx`)
+and autosave restore (`graphStore.ts`) — so old `.segraph` files (including
+real desktop-app exports) keep working. Verified in-browser: retired-id
+`.segraph` opens with a working, correctly-wired replacement node and
+generates correct code.
+
+Deferred within 7.2 (not yet started): the **Above/Below merges** (Battery,
+Gas Tank, Cargo, Room Oxygen, Ship Speed, Jump Drive Charge, Piston
+Position) — these are fragmented across three different codegen dispatch
+paths per family (plain `ActionType` emitters, `ExtendedBuiltin`
+id-keyed emitters, and one-off dedicated `ActionType`s like
+`CargoPercentBelow`/`BatteryBelow`), so unifying each into one
+`Above|Below`-combo node needs a real new emitter per family, not just a
+catalog edit — bigger/riskier than the mechanical preset-pair merges done
+so far. Tracked as follow-up work in this same milestone.
 
 - [x] Milestone 1 — Repo/pipeline skeleton (merged in #1)
 - [x] Milestone 2 — Data layer (merged in #2)
 - [x] Milestone 3 — Canvas (merged in #3)
 - [x] Milestone 4 — Codegen (merged in #4)
 - [x] Milestone 5 — Minify (merged in #5)
-- [ ] Milestone 6 — Persistence (in progress)
+- [x] Milestone 6 — Persistence (merged in #6)
 - [ ] Milestone 7.1 — Stretch: node packs, wizards
-- [ ] Milestone 7.2 — Stretch: cleaned-up native node catalog + `.segraph` import
+- [ ] Milestone 7.2 — Stretch: cleaned-up native node catalog + `.segraph`
+      import (in progress — preset-pair merges + importer done, Above/Below
+      merges still open)
 - [ ] Milestone 7.3 — Stretch: `.segraph` export (legacy-compatible), may end
       up documented-only
 
@@ -206,23 +224,33 @@ from it, not introduced by this project. Decisions on **how** to fix it are
 being made now so the design doc in 7.2 doesn't drift from what actually
 shipped in Milestone 2's data layer:
 
-- **Cross-category duplication**: `SetBlockEnabled`, `SetSensorEnabled`,
-  `SetHingeEnabled`, `SetRotorEnabled`, `SetMergeBlockEnabled`, etc. are
-  distinct `ActionType`s that all compile to the identical `block.Enabled =
-  value` — collapse to one `ActionType`, one emitter, keep (or merge) the
-  discoverable per-context palette entries pointing at it.
-- **Missing comparison operators**: no `>=`, `<=`, or `!=` exists anywhere
-  in the library. Add a general `Number Compare` node with a full operator
-  combo, replacing `If Number Greater/Less Than`.
-- **Above/Below pairs**: Battery, Gas Tank, Cargo, Room Oxygen, Ship Speed,
-  Jump Drive Charge, and Piston Position each ship as two nodes differing
-  only in comparison direction — collapse each pair into one node with an
-  `Above|Below` combo (same pattern as the existing `Enabled` combo).
-- **Preset-only duplicates**: `Button Command: dock/mine/startup` share the
-  exact `ActionType`/property shape as plain `Button Command`, differing
-  only in the `Argument` default — fold into one node; keep the presets (if
-  wanted) as palette quick-add shortcuts that don't need separate catalog
-  entries.
+- **Cross-category duplication** ✅ done — `SetBlockEnabled`,
+  `SetSensorEnabled`, `SetHingeEnabled`, `SetRotorEnabled`,
+  `SetMergeBlockEnabled`, and 9 other `*Enabled`/boolean-toggle
+  `ActionType`s already compiled to identical code across their on/off
+  preset pairs; each pair is now one node with an `Enabled`/`Locked` combo
+  (kept per-context, e.g. `Light Enabled` vs `Thruster Enabled`, for
+  palette discoverability — not collapsed across contexts). AI-Block and
+  Event-Controller presets (which already had a generic combo node
+  alongside their on/off pairs) had the presets deleted outright rather
+  than re-merged. 22 pair-merges + 12 preset deletions; see the Status
+  section above for the overall 346 → 310 catalog count.
+- **Missing comparison operators** ✅ done — added a general `Number
+  Compare` node (`ActionType: NumberCompare`) with a full operator combo
+  (`>`, `<`, `>=`, `<=`, `==`, `!=`); `If Number Greater/Less Than` are
+  untouched (existing graphs keep working) rather than replaced.
+- **Above/Below pairs** — not yet done. Battery, Gas Tank, Cargo, Room
+  Oxygen, Ship Speed, Jump Drive Charge, and Piston Position each ship as
+  two nodes differing only in comparison direction. Unlike the Enabled
+  family these are fragmented across three different codegen dispatch
+  mechanisms per node (plain `ActionType` emitters, `ExtendedBuiltin`
+  id-keyed emitters, and one-off `ActionType`s like `CargoPercentBelow`/
+  `BatteryBelow`), so collapsing each pair into one `Above|Below`-combo
+  node needs a new unified emitter per family, not just a catalog edit —
+  left as follow-up work.
+- **Preset-only duplicates** ✅ done — `Button Command: dock/mine/startup`
+  deleted; their `Argument` values are preserved by the legacy importer as
+  property overrides onto the plain `Button Command` node.
 - **Fused vs. composable duplication**: some measurements (e.g. battery
   charge) ship both as a fused check (`Battery Below %`) *and* as a
   composable primitive (`Get Battery Charge %` + a comparison) that does

@@ -4,6 +4,7 @@ import {
   calculateEmitter,
   commandRouterEmitter,
   echoEmitter,
+  numberCompareEmitter,
   numberGreaterRouterEmitter,
   repeatTimesEmitter,
   runEverySecondsEmitter,
@@ -28,6 +29,27 @@ describe('runEverySecondsEmitter', () => {
     const a = runEverySecondsEmitter(makeNode({ ActionType: 'RunEverySeconds', Id: 'a', Properties: { Seconds: '1' } }), fakeContext())
     const b = runEverySecondsEmitter(makeNode({ ActionType: 'RunEverySeconds', Id: 'b', Properties: { Seconds: '1' } }), fakeContext())
     expect(expressionOf(a)).not.toBe(expressionOf(b))
+  })
+})
+
+describe('numberCompareEmitter', () => {
+  it.each([
+    ['>', '>'],
+    ['<', '<'],
+    ['>=', '>='],
+    ['<=', '<='],
+    ['==', '=='],
+    ['!=', '!='],
+  ])('emits the %s operator verbatim', (operator, expected) => {
+    const node = makeNode({ ActionType: 'NumberCompare', Properties: { Name: 'n', Operator: operator, Value: '5' } })
+    const emit = numberCompareEmitter(node, fakeContext())
+    expect(emit.kind).toBe('condition')
+    expect(expressionOf(emit)).toBe(`GetNum("n") ${expected} 5`)
+  })
+
+  it('falls back to > for an unrecognized/missing operator', () => {
+    const node = makeNode({ ActionType: 'NumberCompare', Properties: { Name: 'n', Operator: '', Value: '5' } })
+    expect(expressionOf(numberCompareEmitter(node, fakeContext()))).toBe('GetNum("n") > 5')
   })
 })
 
