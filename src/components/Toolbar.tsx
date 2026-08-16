@@ -64,6 +64,12 @@ export function Toolbar() {
 
   const handleOpenClick = () => fileInputRef.current?.click()
 
+  const handleClear = () => {
+    if (nodes.length === 0 && connections.length === 0) return
+    if (!confirm('Clear the entire graph? This also overwrites the autosave, but you can still Ctrl+Z it back.')) return
+    loadGraph({ Nodes: [], Connections: [], NextNodeNumber: 1, Zoom: 1 })
+  }
+
   const handleFileSelected = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = '' // allow re-selecting the same file next time
@@ -103,6 +109,14 @@ export function Toolbar() {
       </button>
       <button style={buttonStyle} onClick={handleOpenClick} title="Load a graph from a .segraph/.json file">
         Open
+      </button>
+      <button
+        style={nodes.length === 0 && connections.length === 0 ? disabledButtonStyle : buttonStyle}
+        onClick={handleClear}
+        disabled={nodes.length === 0 && connections.length === 0}
+        title="Clear the graph (and its autosave) and start over"
+      >
+        Clear
       </button>
       <span style={{ width: 1, alignSelf: 'stretch', background: '#374151' }} />
       <button style={buttonStyle} onClick={handleCopyScript} title="Copy the script shown below to the clipboard">
