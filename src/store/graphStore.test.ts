@@ -56,6 +56,39 @@ describe('addNode / deleteNode', () => {
     expect(state.nodes.map((n) => n.Id)).toEqual([echo.Id])
     expect(state.connections).toHaveLength(0)
   })
+
+  it('calling connect() twice with an identical connection (React Flow can fire onConnect twice per drag) only checkpoints once', () => {
+    const { addNode, connect } = useGraphStore.getState()
+    addNode(START_DEF, { x: 0, y: 0 })
+    addNode(ECHO_DEF, { x: 10, y: 10 })
+    const [start, echo] = useGraphStore.getState().nodes
+    const pastLengthBeforeConnect = useGraphStore.getState().past.length
+
+    const wire = { FromNodeId: start.Id, FromPort: 'Next', ToNodeId: echo.Id, ToPort: 'In' }
+    connect(wire)
+    connect(wire) // duplicate call, as if onConnect fired twice for one gesture
+    expect(useGraphStore.getState().connections).toHaveLength(1)
+    expect(useGraphStore.getState().past.length).toBe(pastLengthBeforeConnect + 1)
+
+    // A single undo should fully remove the wire, not just no-op the redundant checkpoint.
+    useGraphStore.getState().undo()
+    expect(useGraphStore.getState().connections).toHaveLength(0)
+  })
+
+  it('calling deleteNode()/deleteConnection() twice on the same id is a no-op the second time', () => {
+    const { addNode, connect } = useGraphStore.getState()
+    addNode(START_DEF, { x: 0, y: 0 })
+    addNode(ECHO_DEF, { x: 10, y: 10 })
+    const [start, echo] = useGraphStore.getState().nodes
+    connect({ FromNodeId: start.Id, FromPort: 'Next', ToNodeId: echo.Id, ToPort: 'In' })
+
+    const pastLengthBeforeDelete = useGraphStore.getState().past.length
+    useGraphStore.getState().deleteNode(start.Id)
+    useGraphStore.getState().deleteNode(start.Id)
+    expect(useGraphStore.getState().past.length).toBe(pastLengthBeforeDelete + 1)
+    useGraphStore.getState().undo()
+    expect(useGraphStore.getState().nodes.map((n) => n.Id)).toEqual([start.Id, echo.Id])
+  })
 })
 
 describe('undo / redo', () => {

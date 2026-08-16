@@ -1,7 +1,8 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import type { ChangeEvent, CSSProperties } from 'react'
 import type { GraphSaveData } from '../types/graph'
 import { useGraphStore } from '../store/graphStore'
+import { useGeneratedScript } from '../hooks/useGeneratedScript'
 
 const SAVE_FILENAME = 'script.segraph'
 
@@ -31,6 +32,24 @@ export function Toolbar() {
   const redo = useGraphStore((s) => s.redo)
   const loadGraph = useGraphStore((s) => s.loadGraph)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { displayed } = useGeneratedScript()
+  const [copied, setCopied] = useState(false)
+
+  const handleCopyScript = async () => {
+    await navigator.clipboard.writeText(displayed)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  const handleExportScript = () => {
+    const blob = new Blob([displayed], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'Script.cs'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const handleSave = () => {
     const data: GraphSaveData = { Nodes: nodes, Connections: connections, NextNodeNumber: nextNodeNumber, Zoom: 1 }
@@ -84,6 +103,13 @@ export function Toolbar() {
       </button>
       <button style={buttonStyle} onClick={handleOpenClick} title="Load a graph from a .segraph/.json file">
         Open
+      </button>
+      <span style={{ width: 1, alignSelf: 'stretch', background: '#374151' }} />
+      <button style={buttonStyle} onClick={handleCopyScript} title="Copy the script shown below to the clipboard">
+        {copied ? 'Copied!' : 'Copy Script'}
+      </button>
+      <button style={buttonStyle} onClick={handleExportScript} title="Download the script shown below as a .cs file">
+        Export Script
       </button>
       <input
         ref={fileInputRef}

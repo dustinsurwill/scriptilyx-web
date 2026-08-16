@@ -1,21 +1,5 @@
-import { useMemo, useState } from 'react'
-import type { NodeConnection, ScriptNode } from '../types/graph'
-import { generateScript, minifySource } from '../lib/codegen'
-
-const buttonStyle = {
-  fontSize: 11,
-  padding: '3px 8px',
-  background: '#1f2937',
-  border: '1px solid #374151',
-  borderRadius: 4,
-  color: 'inherit',
-  cursor: 'pointer',
-} as const
-
-interface ScriptPreviewProps {
-  nodes: ScriptNode[]
-  connections: NodeConnection[]
-}
+import { useGraphStore } from '../store/graphStore'
+import { useGeneratedScript } from '../hooks/useGeneratedScript'
 
 // The programmable block's terminal rejects scripts over 100,000 chars.
 const PB_CHAR_LIMIT = 100_000
@@ -28,33 +12,12 @@ function sizeColor(chars: number): string {
   return '#22c55e'
 }
 
-export function ScriptPreview({ nodes, connections }: ScriptPreviewProps) {
-  const [professionalComments, setProfessionalComments] = useState(false)
-  const [minify, setMinify] = useState(false)
-  const [copied, setCopied] = useState(false)
-
-  const { source, warnings } = useMemo(
-    () => generateScript(nodes, connections, { professionalComments }),
-    [nodes, connections, professionalComments],
-  )
-  const minified = useMemo(() => minifySource(source), [source])
-  const displayed = minify ? minified : source
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(displayed)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
-
-  const handleExport = () => {
-    const blob = new Blob([displayed], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'Script.cs'
-    a.click()
-    URL.revokeObjectURL(url)
-  }
+export function ScriptPreview() {
+  const detailedComments = useGraphStore((s) => s.detailedComments)
+  const setDetailedComments = useGraphStore((s) => s.setDetailedComments)
+  const minify = useGraphStore((s) => s.minify)
+  const setMinify = useGraphStore((s) => s.setMinify)
+  const { source, minified, displayed, warnings } = useGeneratedScript()
 
   return (
     <div
@@ -75,24 +38,16 @@ export function ScriptPreview({ nodes, connections }: ScriptPreviewProps) {
           <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
             <input
               type="checkbox"
-              checked={professionalComments}
-              onChange={(e) => setProfessionalComments(e.target.checked)}
+              checked={detailedComments}
+              onChange={(e) => setDetailedComments(e.target.checked)}
             />
-            Header comment
+            Detailed Comments
           </label>
           <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
             <input type="checkbox" checked={minify} onChange={(e) => setMinify(e.target.checked)} />
             Minify
           </label>
         </div>
-      </div>
-      <div style={{ display: 'flex', gap: 8, margin: '0 0 8px' }}>
-        <button style={buttonStyle} onClick={handleCopy} title="Copy the script shown below to the clipboard">
-          {copied ? 'Copied!' : 'Copy'}
-        </button>
-        <button style={buttonStyle} onClick={handleExport} title="Download the script shown below as a .cs file">
-          Export .cs
-        </button>
       </div>
       <div style={{ display: 'flex', gap: 12, fontSize: 11, margin: '0 0 8px', fontVariantNumeric: 'tabular-nums' }}>
         <span style={{ color: sizeColor(source.length) }}>

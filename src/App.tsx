@@ -105,7 +105,7 @@ function App() {
           </div>
           <ResizeHandle axis="y" onMouseDown={onValidationHandleDown} />
           <div style={{ flex: '1 1 auto', minHeight: 0 }}>
-            <ScriptPreview nodes={nodes} connections={connections} />
+            <ScriptPreview />
           </div>
         </div>
       </div>

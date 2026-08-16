@@ -65,6 +65,14 @@ interface GraphState {
   selection: Selection
   past: HistorySnapshot[]
   future: HistorySnapshot[]
+  /** Script-preview display toggles. Shared between ScriptPreview (which
+   * owns the checkboxes) and Toolbar (whose Copy/Export buttons need to
+   * know which text is on screen) — UI state, not graph state, so it's
+   * deliberately outside HistorySnapshot/autosave. */
+  detailedComments: boolean
+  minify: boolean
+  setDetailedComments: (value: boolean) => void
+  setMinify: (value: boolean) => void
 
   addNode: (definition: NodeDefinition, position: { x: number; y: number }) => void
   moveNode: (nodeId: string, position: { x: number; y: number }) => void
@@ -96,6 +104,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   selection: { nodeId: null, connectionId: null },
   past: [],
   future: [],
+  detailedComments: false,
+  minify: false,
+  setDetailedComments: (value) => set({ detailedComments: value }),
+  setMinify: (value) => set({ minify: value }),
 
   addNode: (definition, position) => {
     get().checkpoint()
@@ -141,6 +153,9 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   },
 
   deleteNode: (nodeId) => {
+    // Same double-invoke guard as connect() below — React Flow's
+    // onNodesChange can report the same 'remove' change more than once.
+    if (!get().nodes.some((n) => n.Id === nodeId)) return
     get().checkpoint()
     set((state) => ({
       nodes: state.nodes.filter((n) => n.Id !== nodeId),
@@ -155,6 +170,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   },
 
   deleteConnection: (id) => {
+    if (!get().connections.some((c) => connectionId(c) === id)) return
     get().checkpoint()
     set((state) => ({
       connections: state.connections.filter((c) => connectionId(c) !== id),
@@ -166,6 +182,21 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   },
 
   connect: (connection) => {
+    const state = get()
+    const isDuplicate = state.connections.some(
+      (c) =>
+        c.FromNodeId === connection.FromNodeId &&
+        c.FromPort === connection.FromPort &&
+        c.ToNodeId === connection.ToNodeId &&
+        c.ToPort === connection.ToPort,
+    )
+    // React Flow (at least combined with React 18 StrictMode in dev) can
+    // invoke onConnect twice for a single drag gesture. Without this guard
+    // the second call would push a second, redundant checkpoint whose
+    // snapshot already contains the just-added wire — corrupting undo so
+    // the first Undo click silently restores that same state and only the
+    // second click visibly removes the wire.
+    if (isDuplicate) return
     get().checkpoint()
     set((state) => ({
       // An output port drives exactly one outgoing wire: connecting a new
