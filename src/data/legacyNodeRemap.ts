@@ -1,9 +1,11 @@
 // Auto-generated during the Milestone 7.2 native-catalog cleanup: maps node
 // ids retired from `nodeLibrary.json` (old on/off preset pairs, redundant
 // button-command presets, Above/Below threshold pairs, Wheel boolean on/off
-// presets, and the Add/Subtract/Multiply/Divide/Equals number-variable nodes)
-// onto their replacement in the current catalog, so a legacy `.segraph` opened
-// here still resolves to a real node definition.
+// presets, the Add/Subtract/Multiply/Divide/Equals number-variable nodes, the
+// AI-Block/Event-Controller/generic-terminal True/False and Above/Below check
+// pairs, and the Rotor Angle / Bool Variable True/False pairs) onto their
+// replacement in the current catalog, so a legacy `.segraph` opened here still
+// resolves to a real node definition.
 // See docs/PLAN.md -> "Native catalog cleanup" for the design rationale.
 export interface LegacyNodeRemap {
   newId: string
@@ -104,4 +106,24 @@ export const LEGACY_NODE_ID_REMAP: Record<string, LegacyNodeRemap> = {
   "ext.var.multiply": { newId: "var.number_math", properties: { "Operator": "*" } },
   "ext.var.divide": { newId: "var.number_math", properties: { "Operator": "/" } },
   "ext.var.equals": { newId: "var.number_compare", properties: { "Operator": "==" } },
+  "ai.if_bool_true": { newId: "ai.if_bool", properties: { "Value": "True" } },
+  "ai.if_bool_false": { newId: "ai.if_bool", properties: { "Value": "False" } },
+  "event_controller.if_bool_true": { newId: "event_controller.if_bool", properties: { "Value": "True" } },
+  "event_controller.if_bool_false": { newId: "event_controller.if_bool", properties: { "Value": "False" } },
+  "ext.generic.if_bool_true": { newId: "ext.generic.if_bool", properties: { "Value": "True" } },
+  "ext.generic.if_bool_false": { newId: "ext.generic.if_bool", properties: { "Value": "False" } },
+  "ai.if_float_above": { newId: "ai.if_float", properties: { "Direction": "Above" } },
+  "ai.if_float_below": { newId: "ai.if_float", properties: { "Direction": "Below" } },
+  "event_controller.if_float_above": { newId: "event_controller.if_float", properties: { "Direction": "Above" } },
+  "event_controller.if_float_below": { newId: "event_controller.if_float", properties: { "Direction": "Below" } },
+  "ext.generic.if_float_above": { newId: "ext.generic.if_float", properties: { "Direction": "Above" } },
+  "ext.generic.if_float_below": { newId: "ext.generic.if_float", properties: { "Direction": "Below" } },
+  "ext.rotor.if_rpm_above": { newId: "ext.rotor.rpm_threshold", properties: { "Direction": "Above" } },
+  "ext.rotor.if_rpm_below": { newId: "ext.rotor.rpm_threshold", properties: { "Direction": "Below" } },
+  "hinge.if_angle_above": { newId: "hinge.angle_threshold", properties: { "Direction": "Above" } },
+  "hinge.if_angle_below": { newId: "hinge.angle_threshold", properties: { "Direction": "Below" } },
+  "mechanical.if_rotor_angle_above": { newId: "mechanical.rotor_angle_threshold", properties: { "Direction": "Above" } },
+  "mechanical.if_rotor_angle_below": { newId: "mechanical.rotor_angle_threshold", properties: { "Direction": "Below" } },
+  "ext.bool.if_true": { newId: "ext.bool.if", properties: { "Value": "True" } },
+  "ext.bool.if_false": { newId: "ext.bool.if", properties: { "Value": "False" } },
 }

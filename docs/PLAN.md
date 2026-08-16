@@ -399,6 +399,116 @@ Two ways to get there, different cost:
   port's codegen resolves to internally, or as the escape hatch for nodes
   that don't warrant a dedicated port.
 
+### If-node consolidation: audit + merge (True/False, Above/Below pairs)
+
+Prompted by a direct question about whether the 76-ish "✅ Checks"-category
+nodes (plus scattered `If...Above/Below`/`...True/False` pairs in other
+categories) still had unmerged duplicate-pair debt after the earlier
+Above/Below passes. A full sweep (every node whose Title ends in
+`Above`/`Below`/`True`/`False`, checked for a same-shape sibling with the
+opposite suffix) turned up 8 more pairs, all merged the same way as the
+earlier Above/Below work — a `Direction: Above|Below` or `Value: True|False`
+combo replacing two nodes:
+
+- **Terminal-property checks** (AI Block, Event Controller, and the
+  generic "Any" nodes each had their own True/False + Above/Below pairs,
+  since all three reuse the same `GetValue<T>` terminal-property shape):
+  `If AI/Event Controller/Any Bool Property` (was `*BoolTrue`/`*BoolFalse`)
+  and `If AI/Event Controller/Any Float Property` (was `*FloatAbove`/
+  `*FloatBelow`) — 6 pairs → 6 nodes, via two new shared factories
+  (`terminalBoolPropertyCondition`/`terminalFloatThresholdCondition` in
+  `factories.ts`, mirrored in `emitters.ts`'s local copy for the AI/Event
+  Controller entries, matching the existing duplication convention between
+  those two files).
+- **Rotor RPM/Angle, Hinge Angle** thresholds — `Rotor RPM Threshold`,
+  `Rotor Angle Threshold`, `Hinge Angle Threshold` replace their Above/
+  Below pairs via the existing `blockThresholdCondition` factory (same one
+  the original 7 Above/Below merges used).
+- **If Bool Variable** — `ext.bool.if_true`/`ext.bool.if_false` (checks a
+  *variable*, not a terminal property — different emitter shape from the
+  above) merged into one node with a `Value: True|False` combo.
+
+285 catalog nodes (was 295). The sweep found nothing else — no further
+True/False or Above/Below duplicate pairs remain anywhere in the catalog.
+(Deliberately *not* touched: state-named pairs like `If Piston Fully
+Extended`/`Retracted` or `If Air Vent Pressurized`/`Depressurized` — those
+aren't simple direction/boolean flips of the same measurement the way
+Above/Below pairs are, so a generalized merge there would be a
+`Door State`-style named-state combo, a different and separate design
+question from what was asked here.)
+
+### Property library for Get/Set-Property nodes (documented, not started)
+
+Raised as real friction: `Set Any Bool/Float/Int/Text Property` and the AI
+Block/Event Controller property nodes all take a free-text `PropertyId`
+with zero autocomplete or validation — a user has to already know the
+exact terminal property id (`"HasTarget"`, `"IsTriggered"`, ...) for the
+specific block type they're targeting, with no in-app reference. Asked
+whether the property's *type* could at least be inferred from a library —
+answer: only if that library exists as structured data, which it currently
+doesn't anywhere in this repo.
+
+The path: `docs/codegen-api-notes.md` already cites two public API
+reference sources used while building the `ExtendedBuiltin` emitters —
+https://malforge.github.io/spaceengineers/pbapi/ (third-party, reportedly
+more complete than the official docs for some blocks) and
+https://keensoftwarehouse.github.io/SpaceEngineersModAPI/ (official). A
+future `src/data/terminalProperties.json` sourced from those two
+(interface → `{ PropertyId: "bool"|"float"|"long"|"string" }`, in the same
+spirit as `nodeLibrary.json` — factual signature data, not copied prose) is
+what an autocomplete/type-check would key off. Once that data exists:
+- **PropertyPanel** could offer a `<datalist>`/autocomplete on `PropertyId`
+  scoped to the node's target interface (would need each `Set/Get Any *
+  Property` node to declare which interface it targets, e.g. via a new
+  `NodeDefinition` field or a small id→interface lookup next to the JSON).
+  - **Type inference** (the second half of the question) becomes possible
+  once the library exists: look up `PropertyId` in the per-interface map
+  and either warn if the node's own type (`SetTerminalBool` vs
+  `SetTerminalFloat`) doesn't match, or — further out — collapse the four
+  typed `Set Any * Property` nodes into one that infers `T` from the
+  chosen `PropertyId` instead of needing four separate typed nodes.
+
+Not started — this is a real, scoped data-curation project (going through
+two API references block-by-block) before any UI work makes sense.
+
+### Dynamic-output-count Switch node (documented, not started)
+
+Asked how hard a Switch/Match node would be — one where the user picks the
+number of output cases in the UI (not the compiled code; codegen already
+handles however many ports a node instance ends up with). More tractable
+than it sounds, because two of the three needed pieces already exist:
+
+- `ScriptGraphNode` (`src/components/ScriptGraphNode.tsx`) already renders
+  `scriptNode.OutputPorts` — the **per-instance** array — not
+  `definition.OutputPorts`, so the canvas already supports a node whose
+  port count differs from its catalog definition's.
+- `Command Router`/`Number Greater Router` already prove the codegen
+  pattern: loop over however many output ports exist, one `Property` per
+  port (`StartupArgument`, `Threshold2`, ...), emit one case/comparison
+  per port. A dynamic Switch's emitter is the same loop, just not
+  hardcoded to a fixed port list.
+
+What's actually missing: **nothing today lets a user add/remove ports on
+an existing node instance** — `ScriptNode.OutputPorts` is copied once from
+`NodeDefinition.OutputPorts` at add-time and never mutated afterward. That
+needs:
+1. A store action (`addOutputPort`/`removeOutputPort`, or a single
+   `setOutputPorts`) mutating both `OutputPorts` and the corresponding
+   per-case `Properties` entries on one `ScriptNode`.
+2. A "manage cases" control in `PropertyPanel` for this node specifically
+   — +/− buttons, each case getting a match-value field — plus a
+   match-mode choice (equals/dictionary dispatch vs. an if/else-if chain,
+   which differ slightly in emitted code: a `switch` needs distinct
+   constant case values, an if/else-if chain doesn't).
+3. A new emitter that reads however many `Case<N>Value` properties exist
+   (mirroring `Command Router`'s pattern) and emits the chosen
+   dispatch shape.
+
+Estimate: comparable in size to the Number Math/Number Compare work in
+this same milestone — one clearly-scoped new feature, not a
+foundational change, since the rendering and codegen precedents already
+exist. Not started.
+
 ## Workflow
 
 One branch + one PR per milestone, merged into `main` before the next

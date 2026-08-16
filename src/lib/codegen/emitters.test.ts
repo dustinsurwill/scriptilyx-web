@@ -97,4 +97,29 @@ describe('merged Above|Below threshold nodes', () => {
     expect(expressionOf(emit('RoomOxygenThreshold', { BlockName: 'V', Percent: '50', Direction: 'Above' }))).toContain('GetOxygenLevel() * 100.0 > 50')
     expect(expressionOf(emit('ShipSpeedThreshold', { BlockName: 'S', Speed: '10', Direction: 'Above' }))).toContain('GetShipSpeed() > 10')
   })
+
+  it('RotorRpmThreshold, RotorAngleThreshold, HingeAngleThreshold switch operator on Direction', () => {
+    expect(expressionOf(emit('RotorRpmThreshold', { BlockName: 'R', RPM: '5', Direction: 'Below' }))).toContain('TargetVelocityRPM < 5')
+    expect(expressionOf(emit('RotorAngleThreshold', { BlockName: 'R', AngleDeg: '45', Direction: 'Above' }))).toContain('Angle * 180.0 / Math.PI > 45')
+    expect(expressionOf(emit('HingeAngleThreshold', { BlockName: 'H', AngleDeg: '45', Direction: 'Below' }))).toContain('Angle * 180.0 / Math.PI < 45')
+  })
+})
+
+describe('merged AI-Block/Event-Controller terminal-property checks', () => {
+  it('IfAiBlockBool/IfEventControllerBool switch on Value instead of a separate True/False node', () => {
+    const t = emit('IfAiBlockBool', { BlockName: 'A', PropertyId: 'HasTarget', Value: 'True' })
+    const f = emit('IfAiBlockBool', { BlockName: 'A', PropertyId: 'HasTarget', Value: 'False' })
+    expect(expressionOf(t)).not.toContain('!(')
+    expect(expressionOf(f)).toContain('!(')
+
+    const ecT = emit('IfEventControllerBool', { BlockName: 'E', PropertyId: 'IsTriggered', Value: 'True' })
+    expect(expressionOf(ecT)).toContain('GetValue<bool>')
+  })
+
+  it('IfAiBlockFloat/IfEventControllerFloat switch operator on Direction', () => {
+    const above = emit('IfAiBlockFloat', { BlockName: 'A', PropertyId: 'X', Value: '5', Direction: 'Above' })
+    const below = emit('IfEventControllerFloat', { BlockName: 'E', PropertyId: 'X', Value: '5', Direction: 'Below' })
+    expect(expressionOf(above)).toContain('> 5')
+    expect(expressionOf(below)).toContain('< 5')
+  })
 })

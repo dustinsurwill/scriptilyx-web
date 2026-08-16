@@ -241,6 +241,23 @@ export function terminalPropertyCondition<T extends string>(
   }
 }
 
+/** Merges the retired *True/*False terminal-bool-property check pairs
+ * (If Any Bool Property True|False) into one node with a `Value:
+ * True|False` combo. */
+export function terminalBoolPropertyCondition(): NodeEmitter {
+  return terminalPropertyCondition('bool', (get, n) => (prop(n, 'Value') === 'False' ? `!${get}` : get))
+}
+
+/** Merges the retired *Above/*Below terminal-float-property check pairs
+ * (If Any Float Property Above|Below) into one node with a `Direction:
+ * Above|Below` combo. */
+export function terminalFloatThresholdCondition(): NodeEmitter {
+  return terminalPropertyCondition(
+    'float',
+    (get, n) => `${get} ${prop(n, 'Direction') === 'Below' ? '<' : '>'} ${numberLiteral(prop(n, 'Value'))}`,
+  )
+}
+
 export function terminalAction(nameKey = 'BlockName', actionKey = 'ActionId'): NodeEmitter {
   return (node, ctx) => {
     ctx.useHelper('GetBlock')

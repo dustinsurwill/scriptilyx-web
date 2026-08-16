@@ -14,7 +14,8 @@ import {
   lcdWrite,
   prop,
   terminalActionByNameContains,
-  terminalPropertyCondition,
+  terminalBoolPropertyCondition,
+  terminalFloatThresholdCondition,
 } from './factories'
 import type { NodeEmitter } from './types'
 
@@ -91,10 +92,8 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
   'ext.generic.get_bool': terminalPropertySetterGetter('bool'),
   'ext.generic.get_int': terminalPropertySetterGetter('long'),
   'ext.generic.get_text': terminalPropertySetterGetter('string'),
-  'ext.generic.if_float_above': terminalPropertyCondition('float', (get, n) => `${get} > ${numberLiteral(prop(n, 'Value'))}`),
-  'ext.generic.if_float_below': terminalPropertyCondition('float', (get, n) => `${get} < ${numberLiteral(prop(n, 'Value'))}`),
-  'ext.generic.if_bool_true': terminalPropertyCondition('bool', (get) => get),
-  'ext.generic.if_bool_false': terminalPropertyCondition('bool', (get) => `!${get}`),
+  'ext.generic.if_float': terminalFloatThresholdCondition(),
+  'ext.generic.if_bool': terminalBoolPropertyCondition(),
   'ext.generic.block_exists': (node, ctx) => {
     ctx.useHelper('GetBlock')
     return { kind: 'condition', expression: `GetBlock(${stringLiteral(prop(node, 'BlockName'))}) != null` }
@@ -174,8 +173,6 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
   'ext.piston.if_retracted': blockCondition('IMyPistonBase', (v) => `${v}.CurrentPosition <= ${v}.LowestPosition`),
 
   // --- Rotor / hinge --------------------------------------------------------
-  'ext.rotor.if_rpm_above': blockCondition('IMyMotorStator', (v, n) => `${v}.TargetVelocityRPM > ${numberLiteral(prop(n, 'RPM'))}`),
-  'ext.rotor.if_rpm_below': blockCondition('IMyMotorStator', (v, n) => `${v}.TargetVelocityRPM < ${numberLiteral(prop(n, 'RPM'))}`),
   'ext.rotor.if_stopped': blockCondition('IMyMotorStator', (v) => `Math.Abs(${v}.TargetVelocityRPM) < 0.001f`),
   'ext.hinge.if_locked': blockCondition('IMyMotorStator', (v) => `${v}.RotorLock`),
   'ext.hinge.if_moving': blockCondition('IMyMotorStator', (v) => `Math.Abs(${v}.TargetVelocityRPM) >= 0.001f`),
@@ -414,13 +411,10 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
     }
   },
   'ext.bool.set': setVar('bool', 'Name', (n) => boolLiteral(prop(n, 'Value'))),
-  'ext.bool.if_true': (node, ctx) => {
+  'ext.bool.if': (node, ctx) => {
     ctx.useHelper('Vars')
-    return { kind: 'condition', expression: `GetBool(${stringLiteral(prop(node, 'Name'))})` }
-  },
-  'ext.bool.if_false': (node, ctx) => {
-    ctx.useHelper('Vars')
-    return { kind: 'condition', expression: `!GetBool(${stringLiteral(prop(node, 'Name'))})` }
+    const get = `GetBool(${stringLiteral(prop(node, 'Name'))})`
+    return { kind: 'condition', expression: prop(node, 'Value') === 'False' ? `!${get}` : get }
   },
   'ext.bool.toggle': (node, ctx) => {
     ctx.useHelper('Vars')

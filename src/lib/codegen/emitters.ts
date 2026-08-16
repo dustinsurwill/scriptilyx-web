@@ -143,6 +143,23 @@ function terminalPropertyCondition<T extends string>(
   }
 }
 
+/** Merges the retired *True/*False terminal-bool-property check pairs
+ * (If AI/Event Controller Bool Property True|False) into one node with a
+ * `Value: True|False` combo. */
+function terminalBoolPropertyCondition(): NodeEmitter {
+  return terminalPropertyCondition('bool', (get, n) => (prop(n, 'Value') === 'False' ? `!${get}` : get))
+}
+
+/** Merges the retired *Above/*Below terminal-float-property check pairs
+ * (If AI/Event Controller Float Property Above|Below) into one node with a
+ * `Direction: Above|Below` combo. */
+function terminalFloatThresholdCondition(): NodeEmitter {
+  return terminalPropertyCondition(
+    'float',
+    (get, n) => `${get} ${prop(n, 'Direction') === 'Below' ? '<' : '>'} ${numberLiteral(prop(n, 'Value'))}`,
+  )
+}
+
 function terminalAction(nameKey = 'BlockName'): NodeEmitter {
   return (node, ctx) => {
     ctx.useHelper('GetBlock')
@@ -352,22 +369,7 @@ export const genericEmitters: Record<string, NodeEmitter> = {
   IfRotorLocked: blockCondition('IMyMotorStator', (v) => `${v}.RotorLock`),
   IfRotorAttached: blockCondition('IMyMotorStator', (v) => `${v}.TopGrid != null`),
   IfHingeAttached: blockCondition('IMyMotorStator', (v) => `${v}.TopGrid != null`),
-  IfRotorAngleAbove: blockCondition(
-    'IMyMotorStator',
-    (v, n) => `${v}.Angle * 180.0 / Math.PI > ${numberLiteral(prop(n, 'AngleDeg'))}`,
-  ),
-  IfRotorAngleBelow: blockCondition(
-    'IMyMotorStator',
-    (v, n) => `${v}.Angle * 180.0 / Math.PI < ${numberLiteral(prop(n, 'AngleDeg'))}`,
-  ),
-  IfHingeAngleAbove: blockCondition(
-    'IMyMotorStator',
-    (v, n) => `${v}.Angle * 180.0 / Math.PI > ${numberLiteral(prop(n, 'AngleDeg'))}`,
-  ),
-  IfHingeAngleBelow: blockCondition(
-    'IMyMotorStator',
-    (v, n) => `${v}.Angle * 180.0 / Math.PI < ${numberLiteral(prop(n, 'AngleDeg'))}`,
-  ),
+  RotorAngleThreshold: blockThresholdCondition('IMyMotorStator', (v) => `${v}.Angle * 180.0 / Math.PI`, 'AngleDeg'),
 
   // --- Power / air / utility --------------------------------------------------
   TimerTrigger: blockMethodCall('IMyTimerBlock', 'Trigger'),
@@ -534,10 +536,8 @@ export const genericEmitters: Record<string, NodeEmitter> = {
   IfAiBlockEnabled: blockCondition('IMyFunctionalBlock', (v) => `${v}.Enabled`),
   IfAiBlockWorking: isWorkingCondition(),
   IfAiOffensiveHasTarget: terminalPropertyCondition('bool', (get) => get),
-  IfAiBlockBoolTrue: terminalPropertyCondition('bool', (get) => get),
-  IfAiBlockBoolFalse: terminalPropertyCondition('bool', (get) => `!${get}`),
-  IfAiBlockFloatAbove: terminalPropertyCondition('float', (get, n) => `${get} > ${numberLiteral(prop(n, 'Value'))}`),
-  IfAiBlockFloatBelow: terminalPropertyCondition('float', (get, n) => `${get} < ${numberLiteral(prop(n, 'Value'))}`),
+  IfAiBlockBool: terminalBoolPropertyCondition(),
+  IfAiBlockFloat: terminalFloatThresholdCondition(),
 
   // --- Event Controller: same generic shapes as AI Blocks ----------------------
   SetEventControllerEnabled: blockPropertySetter('IMyFunctionalBlock', 'Enabled', enabledValue),
@@ -551,14 +551,10 @@ export const genericEmitters: Record<string, NodeEmitter> = {
   IfEventControllerEnabled: blockCondition('IMyFunctionalBlock', (v) => `${v}.Enabled`),
   IfEventControllerWorking: isWorkingCondition(),
   IfEventControllerTriggered: terminalPropertyCondition('bool', (get) => get),
-  IfEventControllerBoolTrue: terminalPropertyCondition('bool', (get) => get),
-  IfEventControllerBoolFalse: terminalPropertyCondition('bool', (get) => `!${get}`),
-  IfEventControllerFloatAbove: terminalPropertyCondition(
-    'float',
-    (get, n) => `${get} > ${numberLiteral(prop(n, 'Value'))}`,
-  ),
-  IfEventControllerFloatBelow: terminalPropertyCondition(
-    'float',
-    (get, n) => `${get} < ${numberLiteral(prop(n, 'Value'))}`,
-  ),
+  IfEventControllerBool: terminalBoolPropertyCondition(),
+  IfEventControllerFloat: terminalFloatThresholdCondition(),
+
+  // --- Merged Above|Below threshold checks (native-catalog cleanup) -----------
+  RotorRpmThreshold: blockThresholdCondition('IMyMotorStator', (v) => `${v}.TargetVelocityRPM`, 'RPM'),
+  HingeAngleThreshold: blockThresholdCondition('IMyMotorStator', (v) => `${v}.Angle * 180.0 / Math.PI`, 'AngleDeg'),
 }

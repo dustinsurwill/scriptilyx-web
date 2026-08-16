@@ -1206,62 +1206,6 @@
    "Preview": "If Rotor Locked"
   },
   {
-   "Id": "mechanical.if_rotor_angle_above",
-   "Category": "⚙ Mechanical",
-   "Title": "If Rotor Angle Above",
-   "Description": "Checks whether the rotor angle is above a degree value.",
-   "Search": "",
-   "ActionType": "IfRotorAngleAbove",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Rotor",
-     "Options": []
-    },
-    "AngleDeg": {
-     "Type": "number",
-     "DefaultValue": "0",
-     "Options": []
-    }
-   },
-   "Preview": "If Rotor Angle Above"
-  },
-  {
-   "Id": "mechanical.if_rotor_angle_below",
-   "Category": "⚙ Mechanical",
-   "Title": "If Rotor Angle Below",
-   "Description": "Checks whether the rotor angle is below a degree value.",
-   "Search": "",
-   "ActionType": "IfRotorAngleBelow",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Rotor",
-     "Options": []
-    },
-    "AngleDeg": {
-     "Type": "number",
-     "DefaultValue": "0",
-     "Options": []
-    }
-   },
-   "Preview": "If Rotor Angle Below"
-  },
-  {
    "Id": "mechanical.rotor_status_lcd",
    "Category": "⚙ Mechanical",
    "Title": "Set Rotor Status LCD",
@@ -1977,62 +1921,6 @@
    "Preview": "{BlockName} attached?"
   },
   {
-   "Id": "hinge.if_angle_above",
-   "Category": "✅ Checks",
-   "Title": "If Hinge Angle Above",
-   "Description": "Checks if the hinge angle is above a number of degrees.",
-   "Search": "hinge angle above greater than degrees check true false",
-   "ActionType": "IfHingeAngleAbove",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Hinge",
-     "Options": []
-    },
-    "AngleDeg": {
-     "Type": "number",
-     "DefaultValue": "45",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName} angle > {AngleDeg}°?"
-  },
-  {
-   "Id": "hinge.if_angle_below",
-   "Category": "✅ Checks",
-   "Title": "If Hinge Angle Below",
-   "Description": "Checks if the hinge angle is below a number of degrees.",
-   "Search": "hinge angle below less than degrees check true false",
-   "ActionType": "IfHingeAngleBelow",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Hinge",
-     "Options": []
-    },
-    "AngleDeg": {
-     "Type": "number",
-     "DefaultValue": "45",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName} angle < {AngleDeg}°?"
-  },
-  {
    "Id": "power.jump_drive_distance_percent",
    "Category": "⚡ Power / Air / Utility",
    "Title": "Jump Drive Set Distance Percent",
@@ -2424,128 +2312,6 @@
    "Preview": "If AI Offensive has target"
   },
   {
-   "Id": "ai.if_bool_true",
-   "Category": "✅ Checks",
-   "Title": "If AI Bool Property True",
-   "Description": "Checks whether a boolean terminal property on an AI block is true.",
-   "Search": "ai bool property true",
-   "ActionType": "IfAiBlockBoolTrue",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "AI Offensive Combat",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "HasTarget",
-     "Options": []
-    }
-   },
-   "Preview": "If AI bool {PropertyId} true"
-  },
-  {
-   "Id": "ai.if_bool_false",
-   "Category": "✅ Checks",
-   "Title": "If AI Bool Property False",
-   "Description": "Checks whether a boolean terminal property on an AI block is false.",
-   "Search": "ai bool property false",
-   "ActionType": "IfAiBlockBoolFalse",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "AI Offensive Combat",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "HasTarget",
-     "Options": []
-    }
-   },
-   "Preview": "If AI bool {PropertyId} false"
-  },
-  {
-   "Id": "ai.if_float_above",
-   "Category": "✅ Checks",
-   "Title": "If AI Float Property Above",
-   "Description": "Checks whether a numeric terminal property on an AI block is above a value.",
-   "Search": "ai float property above",
-   "ActionType": "IfAiBlockFloatAbove",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "AI Offensive Combat",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "",
-     "Options": []
-    },
-    "Value": {
-     "Type": "number",
-     "DefaultValue": "0",
-     "Options": []
-    }
-   },
-   "Preview": "If AI float {PropertyId} > {Value}"
-  },
-  {
-   "Id": "ai.if_float_below",
-   "Category": "✅ Checks",
-   "Title": "If AI Float Property Below",
-   "Description": "Checks whether a numeric terminal property on an AI block is below a value.",
-   "Search": "ai float property below",
-   "ActionType": "IfAiBlockFloatBelow",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "AI Offensive Combat",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "",
-     "Options": []
-    },
-    "Value": {
-     "Type": "number",
-     "DefaultValue": "0",
-     "Options": []
-    }
-   },
-   "Preview": "If AI float {PropertyId} < {Value}"
-  },
-  {
    "Id": "ai.status_lcd",
    "Category": "🤖 AI Blocks",
    "Title": "Set AI Status LCD",
@@ -2858,128 +2624,6 @@
     }
    },
    "Preview": "If Event Controller triggered"
-  },
-  {
-   "Id": "event_controller.if_bool_true",
-   "Category": "✅ Checks",
-   "Title": "If Event Controller Bool Property True",
-   "Description": "Checks whether a boolean terminal property on an Event Controller is true.",
-   "Search": "event controller bool property true",
-   "ActionType": "IfEventControllerBoolTrue",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Event Controller",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "IsTriggered",
-     "Options": []
-    }
-   },
-   "Preview": "If Event bool {PropertyId} true"
-  },
-  {
-   "Id": "event_controller.if_bool_false",
-   "Category": "✅ Checks",
-   "Title": "If Event Controller Bool Property False",
-   "Description": "Checks whether a boolean terminal property on an Event Controller is false.",
-   "Search": "event controller bool property false",
-   "ActionType": "IfEventControllerBoolFalse",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Event Controller",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "IsTriggered",
-     "Options": []
-    }
-   },
-   "Preview": "If Event bool {PropertyId} false"
-  },
-  {
-   "Id": "event_controller.if_float_above",
-   "Category": "✅ Checks",
-   "Title": "If Event Controller Float Property Above",
-   "Description": "Checks whether a numeric terminal property on an Event Controller is above a value.",
-   "Search": "event controller float property above",
-   "ActionType": "IfEventControllerFloatAbove",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Event Controller",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "",
-     "Options": []
-    },
-    "Value": {
-     "Type": "number",
-     "DefaultValue": "0",
-     "Options": []
-    }
-   },
-   "Preview": "If Event float {PropertyId} > {Value}"
-  },
-  {
-   "Id": "event_controller.if_float_below",
-   "Category": "✅ Checks",
-   "Title": "If Event Controller Float Property Below",
-   "Description": "Checks whether a numeric terminal property on an Event Controller is below a value.",
-   "Search": "event controller float property below",
-   "ActionType": "IfEventControllerFloatBelow",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Event Controller",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "",
-     "Options": []
-    },
-    "Value": {
-     "Type": "number",
-     "DefaultValue": "0",
-     "Options": []
-    }
-   },
-   "Preview": "If Event float {PropertyId} < {Value}"
   },
   {
    "Id": "event_controller.status_lcd",
@@ -4057,128 +3701,6 @@
    "Preview": "{BlockName}.{PropertyId} -> {VariableName}"
   },
   {
-   "Id": "ext.generic.if_float_above",
-   "Category": "✅ Checks",
-   "Title": "If Any Float Property Above",
-   "Description": "Branches when a terminal float property is above a value.",
-   "Search": "if generic terminal float property above",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Block",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "PropertyId",
-     "Options": []
-    },
-    "Value": {
-     "Type": "number",
-     "DefaultValue": "0",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName}.{PropertyId} > {Value}"
-  },
-  {
-   "Id": "ext.generic.if_float_below",
-   "Category": "✅ Checks",
-   "Title": "If Any Float Property Below",
-   "Description": "Branches when a terminal float property is below a value.",
-   "Search": "if generic terminal float property below",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Block",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "PropertyId",
-     "Options": []
-    },
-    "Value": {
-     "Type": "number",
-     "DefaultValue": "0",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName}.{PropertyId} < {Value}"
-  },
-  {
-   "Id": "ext.generic.if_bool_true",
-   "Category": "✅ Checks",
-   "Title": "If Any Bool Property True",
-   "Description": "Branches when a terminal bool property is true.",
-   "Search": "if generic terminal bool property true",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Block",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "PropertyId",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName}.{PropertyId} is true"
-  },
-  {
-   "Id": "ext.generic.if_bool_false",
-   "Category": "✅ Checks",
-   "Title": "If Any Bool Property False",
-   "Description": "Branches when a terminal bool property is false.",
-   "Search": "if generic terminal bool property false",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Block",
-     "Options": []
-    },
-    "PropertyId": {
-     "Type": "text",
-     "DefaultValue": "PropertyId",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName}.{PropertyId} is false"
-  },
-  {
    "Id": "ext.generic.block_exists",
    "Category": "✅ Checks",
    "Title": "Block Exists",
@@ -4547,62 +4069,6 @@
     }
    },
    "Preview": "{BlockName} fully retracted"
-  },
-  {
-   "Id": "ext.rotor.if_rpm_above",
-   "Category": "✅ Checks",
-   "Title": "If Rotor RPM Above",
-   "Description": "Checks the rotor target RPM value.",
-   "Search": "rotor rpm target velocity above",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Rotor",
-     "Options": []
-    },
-    "RPM": {
-     "Type": "number",
-     "DefaultValue": "1",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName} target RPM > {RPM}"
-  },
-  {
-   "Id": "ext.rotor.if_rpm_below",
-   "Category": "✅ Checks",
-   "Title": "If Rotor RPM Below",
-   "Description": "Checks the rotor target RPM value.",
-   "Search": "rotor rpm target velocity below",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Rotor",
-     "Options": []
-    },
-    "RPM": {
-     "Type": "number",
-     "DefaultValue": "1",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName} target RPM < {RPM}"
   },
   {
    "Id": "ext.rotor.if_stopped",
@@ -5647,52 +5113,6 @@
     }
    },
    "Preview": "{Name} = {Value}"
-  },
-  {
-   "Id": "ext.bool.if_true",
-   "Category": "🔢 Variables",
-   "Title": "If Bool Variable True",
-   "Description": "Branches when a boolean variable is true.",
-   "Search": "boolean bool variable true check",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "Name": {
-     "Type": "text",
-     "DefaultValue": "flag",
-     "Options": []
-    }
-   },
-   "Preview": "{Name} is true"
-  },
-  {
-   "Id": "ext.bool.if_false",
-   "Category": "🔢 Variables",
-   "Title": "If Bool Variable False",
-   "Description": "Branches when a boolean variable is false.",
-   "Search": "boolean bool variable false check",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "Name": {
-     "Type": "text",
-     "DefaultValue": "flag",
-     "Options": []
-    }
-   },
-   "Preview": "{Name} is false"
   },
   {
    "Id": "ext.bool.toggle",
@@ -8354,6 +7774,376 @@
     }
    },
    "Preview": "{Name} += \"{Value}\""
+  },
+  {
+   "Id": "ai.if_bool",
+   "Category": "✅ Checks",
+   "Title": "If AI Bool Property",
+   "Description": "Checks whether a boolean terminal property on an AI block matches Value.",
+   "Search": "ai bool property true false",
+   "ActionType": "IfAiBlockBool",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "AI Offensive Combat",
+     "Options": []
+    },
+    "PropertyId": {
+     "Type": "text",
+     "DefaultValue": "HasTarget",
+     "Options": []
+    },
+    "Value": {
+     "Type": "combo",
+     "DefaultValue": "True",
+     "Options": [
+      "True",
+      "False"
+     ]
+    }
+   },
+   "Preview": "{BlockName}.{PropertyId} is {Value}"
+  },
+  {
+   "Id": "event_controller.if_bool",
+   "Category": "✅ Checks",
+   "Title": "If Event Controller Bool Property",
+   "Description": "Checks whether a boolean terminal property on an Event Controller matches Value.",
+   "Search": "event controller bool property true false",
+   "ActionType": "IfEventControllerBool",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Event Controller",
+     "Options": []
+    },
+    "PropertyId": {
+     "Type": "text",
+     "DefaultValue": "IsTriggered",
+     "Options": []
+    },
+    "Value": {
+     "Type": "combo",
+     "DefaultValue": "True",
+     "Options": [
+      "True",
+      "False"
+     ]
+    }
+   },
+   "Preview": "{BlockName}.{PropertyId} is {Value}"
+  },
+  {
+   "Id": "ext.generic.if_bool",
+   "Category": "✅ Checks",
+   "Title": "If Any Bool Property",
+   "Description": "Branches when a terminal bool property matches Value.",
+   "Search": "if generic terminal bool property true false",
+   "ActionType": "ExtendedBuiltin",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Block",
+     "Options": []
+    },
+    "PropertyId": {
+     "Type": "text",
+     "DefaultValue": "PropertyId",
+     "Options": []
+    },
+    "Value": {
+     "Type": "combo",
+     "DefaultValue": "True",
+     "Options": [
+      "True",
+      "False"
+     ]
+    }
+   },
+   "Preview": "{BlockName}.{PropertyId} is {Value}"
+  },
+  {
+   "Id": "ai.if_float",
+   "Category": "✅ Checks",
+   "Title": "If AI Float Property",
+   "Description": "Checks a numeric terminal property on an AI block against a threshold.",
+   "Search": "ai float property above below",
+   "ActionType": "IfAiBlockFloat",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "AI Offensive Combat",
+     "Options": []
+    },
+    "PropertyId": {
+     "Type": "text",
+     "DefaultValue": "",
+     "Options": []
+    },
+    "Direction": {
+     "Type": "combo",
+     "DefaultValue": "Above",
+     "Options": [
+      "Above",
+      "Below"
+     ]
+    },
+    "Value": {
+     "Type": "number",
+     "DefaultValue": "0",
+     "Options": []
+    }
+   },
+   "Preview": "{BlockName}.{PropertyId} {Value} ({Direction})"
+  },
+  {
+   "Id": "event_controller.if_float",
+   "Category": "✅ Checks",
+   "Title": "If Event Controller Float Property",
+   "Description": "Checks a numeric terminal property on an Event Controller against a threshold.",
+   "Search": "event controller float property above below",
+   "ActionType": "IfEventControllerFloat",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Event Controller",
+     "Options": []
+    },
+    "PropertyId": {
+     "Type": "text",
+     "DefaultValue": "",
+     "Options": []
+    },
+    "Direction": {
+     "Type": "combo",
+     "DefaultValue": "Above",
+     "Options": [
+      "Above",
+      "Below"
+     ]
+    },
+    "Value": {
+     "Type": "number",
+     "DefaultValue": "0",
+     "Options": []
+    }
+   },
+   "Preview": "{BlockName}.{PropertyId} {Value} ({Direction})"
+  },
+  {
+   "Id": "ext.generic.if_float",
+   "Category": "✅ Checks",
+   "Title": "If Any Float Property",
+   "Description": "Branches when a terminal float property crosses a threshold.",
+   "Search": "if generic terminal float property above below",
+   "ActionType": "ExtendedBuiltin",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Block",
+     "Options": []
+    },
+    "PropertyId": {
+     "Type": "text",
+     "DefaultValue": "PropertyId",
+     "Options": []
+    },
+    "Direction": {
+     "Type": "combo",
+     "DefaultValue": "Above",
+     "Options": [
+      "Above",
+      "Below"
+     ]
+    },
+    "Value": {
+     "Type": "number",
+     "DefaultValue": "0",
+     "Options": []
+    }
+   },
+   "Preview": "{BlockName}.{PropertyId} {Value} ({Direction})"
+  },
+  {
+   "Id": "ext.rotor.rpm_threshold",
+   "Category": "✅ Checks",
+   "Title": "Rotor RPM Threshold",
+   "Description": "Checks the rotor target RPM against a threshold.",
+   "Search": "rotor rpm target velocity above below threshold",
+   "ActionType": "RotorRpmThreshold",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Rotor",
+     "Options": []
+    },
+    "Direction": {
+     "Type": "combo",
+     "DefaultValue": "Above",
+     "Options": [
+      "Above",
+      "Below"
+     ]
+    },
+    "RPM": {
+     "Type": "number",
+     "DefaultValue": "1",
+     "Options": []
+    }
+   },
+   "Preview": "{BlockName} {RPM} ({Direction})"
+  },
+  {
+   "Id": "hinge.angle_threshold",
+   "Category": "✅ Checks",
+   "Title": "Hinge Angle Threshold",
+   "Description": "Checks the hinge angle in degrees against a threshold.",
+   "Search": "hinge angle above below degrees threshold",
+   "ActionType": "HingeAngleThreshold",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Hinge",
+     "Options": []
+    },
+    "Direction": {
+     "Type": "combo",
+     "DefaultValue": "Above",
+     "Options": [
+      "Above",
+      "Below"
+     ]
+    },
+    "AngleDeg": {
+     "Type": "number",
+     "DefaultValue": "45",
+     "Options": []
+    }
+   },
+   "Preview": "{BlockName} {AngleDeg} ({Direction})"
+  },
+  {
+   "Id": "mechanical.rotor_angle_threshold",
+   "Category": "⚙ Mechanical",
+   "Title": "Rotor Angle Threshold",
+   "Description": "Checks the rotor angle in degrees against a threshold.",
+   "Search": "rotor angle above below degrees threshold",
+   "ActionType": "RotorAngleThreshold",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "BlockName": {
+     "Type": "text",
+     "DefaultValue": "Rotor",
+     "Options": []
+    },
+    "Direction": {
+     "Type": "combo",
+     "DefaultValue": "Above",
+     "Options": [
+      "Above",
+      "Below"
+     ]
+    },
+    "AngleDeg": {
+     "Type": "number",
+     "DefaultValue": "0",
+     "Options": []
+    }
+   },
+   "Preview": "{BlockName} {AngleDeg} ({Direction})"
+  },
+  {
+   "Id": "ext.bool.if",
+   "Category": "🔢 Variables",
+   "Title": "If Bool Variable",
+   "Description": "Branches when a boolean variable matches Value.",
+   "Search": "boolean bool variable true false check",
+   "ActionType": "ExtendedBuiltin",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "Name": {
+     "Type": "text",
+     "DefaultValue": "flag",
+     "Options": []
+    },
+    "Value": {
+     "Type": "combo",
+     "DefaultValue": "True",
+     "Options": [
+      "True",
+      "False"
+     ]
+    }
+   },
+   "Preview": "{Name} is {Value}"
   }
  ]
 }

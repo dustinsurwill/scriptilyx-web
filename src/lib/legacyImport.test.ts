@@ -172,6 +172,44 @@ describe('remapLegacyGraph', () => {
     expect(result.Nodes[0].Properties).toEqual({ Name: 'score', Value: '10', Tolerance: '0.5', Operator: '==' })
   })
 
+  it('remaps a retired terminal-property True/False pair onto the merged Value-combo node', () => {
+    const data: GraphSaveData = {
+      Nodes: [
+        legacyNode({
+          DefinitionId: 'ai.if_bool_false',
+          ActionType: 'IfAiBlockBoolFalse',
+          Title: 'If AI Bool Property False',
+          Properties: { BlockName: 'AI', PropertyId: 'HasTarget' },
+        }),
+      ],
+      Connections: [],
+      NextNodeNumber: 2,
+      Zoom: 1,
+    }
+    const result = remapLegacyGraph(data)
+    expect(result.Nodes[0].DefinitionId).toBe('ai.if_bool')
+    expect(result.Nodes[0].Properties).toEqual({ BlockName: 'AI', PropertyId: 'HasTarget', Value: 'False' })
+  })
+
+  it('remaps a retired If Bool Variable True/False onto the merged node', () => {
+    const data: GraphSaveData = {
+      Nodes: [
+        legacyNode({
+          DefinitionId: 'ext.bool.if_true',
+          ActionType: 'ExtendedBuiltin',
+          Title: 'If Bool Variable True',
+          Properties: { Name: 'flag' },
+        }),
+      ],
+      Connections: [],
+      NextNodeNumber: 2,
+      Zoom: 1,
+    }
+    const result = remapLegacyGraph(data)
+    expect(result.Nodes[0].DefinitionId).toBe('ext.bool.if')
+    expect(result.Nodes[0].Properties).toEqual({ Name: 'flag', Value: 'True' })
+  })
+
   it('leaves nodes with a current or unknown DefinitionId untouched', () => {
     const data: GraphSaveData = {
       Nodes: [legacyNode({ DefinitionId: 'block.set_enabled', Title: 'Set Block Enabled' }), legacyNode({ Id: 'n2', DefinitionId: 'totally.unknown.id' })],
