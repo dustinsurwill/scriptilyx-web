@@ -5,116 +5,24 @@
 
 ## Status
 
-**Milestone 7.2 in progress.** Landed so far: merged 22 redundant on/off
-preset pairs (`SetBlockEnabled`, `SetGroupEnabled`, `SetRotorEnabled`, etc.)
-into single `Enabled`-combo nodes, folded the AI-Block/Event-Controller/
-Button-Command presets into their existing generic equivalents, added a
-general-purpose `Number Compare` node (`>`, `<`, `>=`, `<=`, `==`, `!=`),
-and merged the 7 **Above/Below threshold pairs** (Battery, Gas Tank, Cargo,
-Room Oxygen, Ship Speed, Jump Drive Charge, Piston Position) into single
-`Direction`-combo (`Above`/`Below`) nodes via a new `blockThresholdCondition`
-emitter factory — each family previously dispatched through a different
-codegen path (plain `ActionType`, `ExtendedBuiltin` id-keyed, or a one-off
-`ActionType` like `BatteryBelow`/`CargoPercentBelow`), now unified onto 7
-new dedicated `ActionType`s (`BatteryThreshold`, `GasTankThreshold`, etc.).
-Also investigated the **Set-\[Type\]-Property family**
-(`SetTerminalBool`/`SetTerminalFloat`, ~28 Wheel-specific presets): most of
-it (Float presets like `Wheel Set Power`/`Wheel Set Friction`, and the
-3-way Override presets) turned out to be genuinely distinct — each targets
-a different terminal property or has more than two states, so they're
-convenience shortcuts, not duplicates. But 5 of the Bool presets
-(`Wheel Propulsion/Steering/Brake/Invert Steering/Invert Propulsion
-On`+`Off`) *were* the exact same on/off-pair duplication as the Enabled
-family — merged those too. Catalog: 346 → 298 node definitions.
-
-A `remapLegacyGraph()` importer (`src/lib/legacyImport.ts`, table-driven
-from `src/data/legacyNodeRemap.ts`, 83 entries) rewrites any retired id
-onto its replacement — wired into both Open (`Toolbar.tsx`) and autosave
-restore (`graphStore.ts`) — so old `.segraph` files (including real
-desktop-app exports) keep working. Verified in-browser after each merge
-pass: a retired-id `.segraph` opens with a working, correctly-wired
-replacement node and generates correct code.
-
-**Property-as-input, phase 1 (interpolation) done**, including a variable
-registry so the `num:`/`text:`/`bool:` prefix is no longer required for a
-variable the graph already declares. `resolvableBool`/`resolvableNumber`
-(`factories.ts`) let a bool/number property be either a literal or a
-whole-value `{name}` variable reference — the same `{...}` syntax Echo/
-LCD-text already used mid-string, just applied to a property's entire
-value. Wired into `enabledValue`/`lockedValue` (covers all ~20 merged
-Enabled/Locked nodes from this milestone in one place), `SetTerminalBool`/
-`SetTerminalFloat`, and `NumberCompare`/the Above-Below threshold nodes'
-value key. PropertyPanel got a `{ }`/`Fixed` toggle button next to combo/
-bool fields so this is reachable from the UI, not just by hand-editing a
-save file — normally those fields are a fixed `<select>` with no room to
-type a reference.
-
-`src/lib/variableRegistry.ts` derives every declared variable name and its
-type from the ~45 node kinds that create or reference one (`Set Number/
-Text/Bool Variable`, `Calculate`, the `Get X into a variable` family,
-`Save`/`Load Variable`'s `Type` combo, ...) — a role table keyed by
-`ActionType` (or `DefinitionId` for `ExtendedBuiltin` nodes, mirroring
-`registry.ts`'s own dispatch split), preferring a declaring node's kind
-over a merely-referencing one for the same name. Three places consume it:
-
-- **Dropped prefix**: `resolveInterpolationHole` (`factories.ts`) now
-  checks `ctx.variableKind(name)` before falling back to the call site's
-  default kind, so `{docked}` resolves to `GetBool(...)` automatically
-  once something has declared `docked` as a bool — no `{bool:docked}`
-  needed. `EmitContext` grew a `variableKind` field for this;
-  `generateScript` builds the registry once per call and passes it
-  through. An unregistered name still falls back to the old
-  default-to-`num` behavior, so nothing broke for names the registry
-  doesn't know about.
-- **Picker UI**: `PropertyPanel`'s new `VariablePicker` — a `<select>`
-  grouped by kind — shown next to every field that can take a variable
-  reference (multiline/help-tagged text fields in "append" mode; number
-  fields and the combo/bool manual-`{ }` field in "replace" mode).
-  Picking a name inserts a plain `{name}`, no prefix, since dropping the
-  prefix is exactly what the registry is for.
-- **Duplicate-type warning**: `getGraphIssues` now surfaces each of the
-  registry's `conflicts` (the same name used as two different kinds
-  somewhere in the graph — e.g. a `Set Number Variable "x"` alongside a
-  `Set Bool Variable "x"`) as a validation warning, since that's a real
-  bug (both write into the *same* shared field once field-promotion runs)
-  that was previously invisible until you read the generated code.
-
-Not exhaustive by design — a node kind not in the role table just doesn't
-contribute to the registry; a `{name}` reference to it still works, only
-without prefix-dropping or picker/conflict support until it's added.
-**Phase 2 (first-class data ports) is still just the design note below**,
-not started — flagged as the place to revisit if a node needs more than
-one variable input at once (interpolation only covers "this whole
-property is a variable", not wiring multiple inputs into one node).
-
-**Follow-up fixes/merges on top of the registry work**: the
-`VariablePicker` dropdown now takes a `kinds` filter so a bool-only field
-(Enabled/Locked) only lists bool variables and a number field only lists
-number variables — it was showing all three kinds regardless of what the
-field could actually use. While fixing that, found the `{ }`
-variable-reference toggle was showing on *every* combo property, including
-non-boolean ones like `Operator`/`Direction` — those are read as raw
-literals compared against known option strings (never through
-`resolvableBool`), so a `{name}` there would've silently failed to match
-and fallen back to that emitter's default. Now gated to combo properties
-whose `Options` are exactly `["true","false"]`.
-
-Also merged three more catalog duplicates in the same on-going cleanup:
-`Add`/`Subtract`/`Multiply`/`Divide Number Variable` → one **Number Math**
-node (`Name`, `Operator: +|-|*|/`, `Value` — Divide keeps its
-divide-by-zero guard), and **Number Equals** → folded into **Number
-Compare** by adding a `Tolerance` property used only for `==`/`!=`
-(defaults to `0`, i.e. exact equality, so old graphs/tests are unaffected).
-Added a genuinely new node, **Append Text Variable** (`Name += Value`),
-since there wasn't one — `Set Text Variable`'s `Value` didn't even support
-`{name}` interpolation before this (now fixed, via `interpolatedTextExpr`),
-so appending text required manually referencing a variable's own name
-inside its own Set node, which is exactly the "unclear" workaround style
-this ships a real node for instead. Catalog: 298 → 295 (4 nodes removed
-for 1 Number Math + Tolerance-fold, +1 for Append Text Variable). Legacy
-importer gained `renameProperties` support (`AddNumberVariable`'s
-`AddValue` → Number Math's `Value`) since this was the first merge where
-the old and new property key names actually differ.
+**Milestone 7.2 done (merged in #7).** Cleaned up the native node catalog
+(346 → 280 node definitions across seven merge passes — on/off preset
+pairs, Above/Below threshold pairs, Wheel bool presets, number-variable
+math/equality nodes, True/False and Above/Below check pairs, and
+identical-emitter Enabled/Working checks under different names — see
+"Native catalog cleanup" below for the full breakdown), added a
+`remapLegacyGraph()` importer (`src/lib/legacyImport.ts`) so old
+`.segraph` files — including real desktop-app exports — keep working
+against the cleaned catalog, added a `Number Compare`/`Number Math`
+generic-operator node pair, and shipped phase 1 of property-as-input:
+`resolvableBool`/`resolvableNumber` plus a graph-wide variable registry
+(`src/lib/variableRegistry.ts`) that lets a bare `{name}` interpolation
+resolve to the right type without a `num:`/`text:`/`bool:` prefix, backed
+by a `PropertyPanel` variable picker and a duplicate-variable-type
+validation warning. See "Native catalog cleanup" and "Property-as-input"
+below for the full design writeups, including what's documented-but-not-
+started (data ports, a terminal-property library, a dynamic-output switch
+node).
 
 - [x] Milestone 1 — Repo/pipeline skeleton (merged in #1)
 - [x] Milestone 2 — Data layer (merged in #2)
@@ -123,9 +31,8 @@ the old and new property key names actually differ.
 - [x] Milestone 5 — Minify (merged in #5)
 - [x] Milestone 6 — Persistence (merged in #6)
 - [ ] Milestone 7.1 — Stretch: node packs, wizards
-- [ ] Milestone 7.2 — Stretch: cleaned-up native node catalog + `.segraph`
-      import (in progress — preset-pair + Above/Below merges and the
-      importer are done; property-as-input is still a design question)
+- [x] Milestone 7.2 — Stretch: cleaned-up native node catalog + `.segraph`
+      import (merged in #7)
 - [ ] Milestone 7.3 — Stretch: `.segraph` export (legacy-compatible), may end
       up documented-only
 
