@@ -23,6 +23,7 @@ const PROPERTY_HELP: Record<string, string> = {
 
 export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
   const updateNodeProperty = useGraphStore((s) => s.updateNodeProperty)
+  const checkpoint = useGraphStore((s) => s.checkpoint)
 
   if (!scriptNode) {
     return (
@@ -54,6 +55,7 @@ export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
             {type === 'multiline' ? (
               <textarea
                 value={value}
+                onFocus={checkpoint}
                 onChange={(e) => updateNodeProperty(scriptNode.Id, key, e.target.value)}
                 rows={5}
                 style={{
@@ -65,6 +67,7 @@ export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
             ) : type === 'combo' || type === 'bool' ? (
               <select
                 value={value}
+                onFocus={checkpoint}
                 onChange={(e) => updateNodeProperty(scriptNode.Id, key, e.target.value)}
                 style={{ width: '100%', boxSizing: 'border-box' }}
               >
@@ -78,6 +81,7 @@ export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
               <input
                 type="text"
                 value={value}
+                onFocus={checkpoint}
                 onChange={(e) => updateNodeProperty(scriptNode.Id, key, e.target.value)}
                 style={{ width: '100%', boxSizing: 'border-box' }}
               />

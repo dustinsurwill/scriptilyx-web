@@ -5,23 +5,21 @@
 
 ## Status
 
-**Milestone 4 — Codegen merged (#4).** All 345 node types have real emitters
-(no TODO stubs); see `docs/codegen-api-notes.md` for the SE ModAPI research
-behind the `ExtendedBuiltin` emitters. Post-merge follow-ups landed directly
-on `main`: readable method names (`Step_<N>_<Title>` instead of GUIDs),
-dictionary-backed variables promoted to real typed C# fields, `{var}` text
-interpolation (Echo/LCD nodes) and a `Calculate` formula node, an
-auto-inserted `Runtime.UpdateFrequency` when a graph uses a timing node but
-never sets one itself, and a property-level help panel in the editor.
-Confirmed working end-to-end: user-authored script compiles and runs in-game.
-**Now starting Milestone 5 (Minify).**
+**Milestone 6 — Persistence in progress.** Autosave (debounced localStorage
+write + restore-on-load), Save/Open (`.segraph`/`.json` via Blob download +
+file input), Export Script (`.cs` download) and Copy Script (clipboard) are
+in; undo/redo is a real action-based history in the Zustand store
+(`checkpoint()`/`undo()`/`redo()`), with continuous edits (node drags,
+property-field typing) collapsed into one checkpoint per gesture rather than
+one per pixel/keystroke. Verified end-to-end in-browser: add/undo/redo,
+Save → Open round-trip, autosave surviving a reload.
 
 - [x] Milestone 1 — Repo/pipeline skeleton (merged in #1)
 - [x] Milestone 2 — Data layer (merged in #2)
 - [x] Milestone 3 — Canvas (merged in #3)
 - [x] Milestone 4 — Codegen (merged in #4)
-- [ ] Milestone 5 — Minify (in progress)
-- [ ] Milestone 6 — Persistence
+- [x] Milestone 5 — Minify (merged in #5)
+- [ ] Milestone 6 — Persistence (in progress)
 - [ ] Milestone 7.1 — Stretch: node packs, wizards
 - [ ] Milestone 7.2 — Stretch: cleaned-up native node catalog + `.segraph` import
 - [ ] Milestone 7.3 — Stretch: `.segraph` export (legacy-compatible), may end
@@ -35,10 +33,10 @@ from-scratch web app — React + TypeScript + React Flow, deployed as a
 static site to GitHub Pages — that reproduces the tool's functionality in
 the browser, with no backend, plus one new feature the desktop app never
 had: a script **minifier** to help stay under Space Engineers' practical
-script-size limits. (The desktop app's own self-imposed warnings trigger at
-60,000/90,000 characters — these are the original author's heuristics, not
-a documented SE engine constant; we carry the same thresholds forward
-rather than inventing new ones, and note in the UI that they're heuristic.)
+script-size limits. Thresholds are checked against the real programmable-block
+limit (100,000 characters, confirmed against the in-game editor) rather than
+a guessed number — green under 80,000, amber 80,000–95,000, red above
+95,000.
 
 This ships from a brand-new, independent repo, not a fork of the original —
 no shared git history, binaries, or source with it. The README credits/links

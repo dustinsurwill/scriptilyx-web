@@ -1,11 +1,5 @@
-import { useMemo, useState } from 'react'
-import type { NodeConnection, ScriptNode } from '../types/graph'
-import { generateScript, minifySource } from '../lib/codegen'
-
-interface ScriptPreviewProps {
-  nodes: ScriptNode[]
-  connections: NodeConnection[]
-}
+import { useGraphStore } from '../store/graphStore'
+import { useGeneratedScript } from '../hooks/useGeneratedScript'
 
 // The programmable block's terminal rejects scripts over 100,000 chars.
 const PB_CHAR_LIMIT = 100_000
@@ -18,16 +12,12 @@ function sizeColor(chars: number): string {
   return '#22c55e'
 }
 
-export function ScriptPreview({ nodes, connections }: ScriptPreviewProps) {
-  const [professionalComments, setProfessionalComments] = useState(false)
-  const [minify, setMinify] = useState(false)
-
-  const { source, warnings } = useMemo(
-    () => generateScript(nodes, connections, { professionalComments }),
-    [nodes, connections, professionalComments],
-  )
-  const minified = useMemo(() => minifySource(source), [source])
-  const displayed = minify ? minified : source
+export function ScriptPreview() {
+  const detailedComments = useGraphStore((s) => s.detailedComments)
+  const setDetailedComments = useGraphStore((s) => s.setDetailedComments)
+  const minify = useGraphStore((s) => s.minify)
+  const setMinify = useGraphStore((s) => s.setMinify)
+  const { source, minified, displayed, warnings } = useGeneratedScript()
 
   return (
     <div
@@ -42,16 +32,16 @@ export function ScriptPreview({ nodes, connections }: ScriptPreviewProps) {
         minWidth: 0,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <h2 style={{ fontSize: 14, margin: '0 0 8px' }}>Script</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
           <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
             <input
               type="checkbox"
-              checked={professionalComments}
-              onChange={(e) => setProfessionalComments(e.target.checked)}
+              checked={detailedComments}
+              onChange={(e) => setDetailedComments(e.target.checked)}
             />
-            Header comment
+            Detailed Comments
           </label>
           <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
             <input type="checkbox" checked={minify} onChange={(e) => setMinify(e.target.checked)} />

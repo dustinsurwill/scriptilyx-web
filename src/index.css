@@ -15,3 +15,28 @@ body,
   width: 100%;
   height: 100%;
 }
+
+/* React Flow's default Controls/attribution assume a light page: the
+ * button background stays near-white while the icon color inherits our
+ * dark theme's white text, and the attribution link is white-on-
+ * translucent-white — both unreadable here. Override to match the app's
+ * existing dark palette (#1f2937/#374151, see inline styles throughout).
+ * !important is needed because @xyflow/react's own stylesheet is imported
+ * deeper in the component tree (GraphCanvas.tsx), so it loads after this
+ * file and wins the cascade at equal selector specificity otherwise. */
+.react-flow__controls-button {
+  background: #1f2937 !important;
+  border-bottom: 1px solid #374151 !important;
+}
+.react-flow__controls-button:hover {
+  background: #374151 !important;
+}
+.react-flow__controls-button svg {
+  fill: #e5e7eb !important;
+}
+.react-flow__attribution {
+  background: rgba(17, 24, 39, 0.75) !important;
+}
+.react-flow__attribution a {
+  color: #9ca3af !important;
+}
