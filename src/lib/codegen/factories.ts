@@ -143,12 +143,15 @@ export const lockedValue = (node: ScriptNode) => boolLiteral(prop(node, 'Locked'
 // a type other than number). Shared by Echo and every LCD-text emitter.
 // ---------------------------------------------------------------------------
 
-/** Reads a `{kind:name}` or `{name}` (kind defaults to `defaultKind`)
- * interpolation hole and returns the C# read expression for it. */
-function resolveInterpolationHole(expr: string, defaultKind: 'num' | 'text' | 'bool' = 'num'): string {
+/** Reads a `{kind:name}` or `{name}` interpolation hole and returns the C#
+ * read expression for it. With no `kind:` prefix, the type is looked up in
+ * the graph-wide variable registry (`ctx.variableKind`) first — so a
+ * declared variable never needs the prefix at all — and only falls back to
+ * `defaultKind` for a name the registry doesn't know about. */
+function resolveInterpolationHole(expr: string, ctx: EmitContext, defaultKind: 'num' | 'text' | 'bool' = 'num'): string {
   const match = /^(num|text|bool)\s*:\s*(.+)$/i.exec(expr.trim())
-  const kind = match ? match[1].toLowerCase() : defaultKind
   const name = (match ? match[2] : expr).trim()
+  const kind = match ? match[1].toLowerCase() : (ctx.variableKind(name) ?? defaultKind)
   const getter = kind === 'text' ? 'GetText' : kind === 'bool' ? 'GetBool' : 'GetNum'
   return `${getter}(${stringLiteral(name)})`
 }
@@ -160,7 +163,7 @@ export function interpolatedTextExpr(node: ScriptNode, ctx: EmitContext, key = '
   const template = prop(node, key)
   if (!hasInterpolation(template)) return stringLiteral(template)
   ctx.useHelper('Vars')
-  return interpolatedStringLiteral(template, resolveInterpolationHole)
+  return interpolatedStringLiteral(template, (expr) => resolveInterpolationHole(expr, ctx))
 }
 
 /** True if `raw` is *exactly* one `{...}` interpolation hole (as opposed to
@@ -183,7 +186,7 @@ export function resolvableBool(node: ScriptNode, key: string, ctx: EmitContext):
   const raw = prop(node, key)
   if (isPureInterpolation(raw)) {
     ctx.useHelper('Vars')
-    return resolveInterpolationHole(raw.trim().slice(1, -1), 'bool')
+    return resolveInterpolationHole(raw.trim().slice(1, -1), ctx, 'bool')
   }
   return boolLiteral(raw)
 }
@@ -193,7 +196,7 @@ export function resolvableNumber(node: ScriptNode, key: string, ctx: EmitContext
   const raw = prop(node, key)
   if (isPureInterpolation(raw)) {
     ctx.useHelper('Vars')
-    return resolveInterpolationHole(raw.trim().slice(1, -1), 'num')
+    return resolveInterpolationHole(raw.trim().slice(1, -1), ctx, 'num')
   }
   return numberLiteral(raw)
 }

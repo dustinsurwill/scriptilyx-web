@@ -31,6 +31,7 @@ export function fakeContext(): EmitContext & { usedHelpers: Set<string> } {
     hasNext: () => true,
     next: (_node, port) => `NEXT(${port});`,
     callSection: (name) => `CALL_SECTION(${name});`,
+    variableKind: () => undefined,
   }
 }
 

@@ -35,18 +35,53 @@ desktop-app exports) keep working. Verified in-browser after each merge
 pass: a retired-id `.segraph` opens with a working, correctly-wired
 replacement node and generates correct code.
 
-**Property-as-input, phase 1(interpolation) done.** Went with the smaller
-of the two options from the design note below: `resolvableBool`/
-`resolvableNumber` (`factories.ts`) let a bool/number property be either a
-literal or a whole-value `{name}`/`{bool:name}`/`{num:name}` variable
-reference — the same `{...}` syntax Echo/LCD-text already used mid-string,
-just applied to a property's entire value. Wired into `enabledValue`/
-`lockedValue` (covers all ~20 merged Enabled/Locked nodes from this
-milestone in one place), `SetTerminalBool`/`SetTerminalFloat`, and
-`NumberCompare`/the Above-Below threshold nodes' value key. PropertyPanel
-got a `{ }`/`Fixed` toggle button next to combo/bool fields so this is
-reachable from the UI, not just by hand-editing a save file — normally
-those fields are a fixed `<select>` with no room to type a reference.
+**Property-as-input, phase 1 (interpolation) done**, including a variable
+registry so the `num:`/`text:`/`bool:` prefix is no longer required for a
+variable the graph already declares. `resolvableBool`/`resolvableNumber`
+(`factories.ts`) let a bool/number property be either a literal or a
+whole-value `{name}` variable reference — the same `{...}` syntax Echo/
+LCD-text already used mid-string, just applied to a property's entire
+value. Wired into `enabledValue`/`lockedValue` (covers all ~20 merged
+Enabled/Locked nodes from this milestone in one place), `SetTerminalBool`/
+`SetTerminalFloat`, and `NumberCompare`/the Above-Below threshold nodes'
+value key. PropertyPanel got a `{ }`/`Fixed` toggle button next to combo/
+bool fields so this is reachable from the UI, not just by hand-editing a
+save file — normally those fields are a fixed `<select>` with no room to
+type a reference.
+
+`src/lib/variableRegistry.ts` derives every declared variable name and its
+type from the ~45 node kinds that create or reference one (`Set Number/
+Text/Bool Variable`, `Calculate`, the `Get X into a variable` family,
+`Save`/`Load Variable`'s `Type` combo, ...) — a role table keyed by
+`ActionType` (or `DefinitionId` for `ExtendedBuiltin` nodes, mirroring
+`registry.ts`'s own dispatch split), preferring a declaring node's kind
+over a merely-referencing one for the same name. Three places consume it:
+
+- **Dropped prefix**: `resolveInterpolationHole` (`factories.ts`) now
+  checks `ctx.variableKind(name)` before falling back to the call site's
+  default kind, so `{docked}` resolves to `GetBool(...)` automatically
+  once something has declared `docked` as a bool — no `{bool:docked}`
+  needed. `EmitContext` grew a `variableKind` field for this;
+  `generateScript` builds the registry once per call and passes it
+  through. An unregistered name still falls back to the old
+  default-to-`num` behavior, so nothing broke for names the registry
+  doesn't know about.
+- **Picker UI**: `PropertyPanel`'s new `VariablePicker` — a `<select>`
+  grouped by kind — shown next to every field that can take a variable
+  reference (multiline/help-tagged text fields in "append" mode; number
+  fields and the combo/bool manual-`{ }` field in "replace" mode).
+  Picking a name inserts a plain `{name}`, no prefix, since dropping the
+  prefix is exactly what the registry is for.
+- **Duplicate-type warning**: `getGraphIssues` now surfaces each of the
+  registry's `conflicts` (the same name used as two different kinds
+  somewhere in the graph — e.g. a `Set Number Variable "x"` alongside a
+  `Set Bool Variable "x"`) as a validation warning, since that's a real
+  bug (both write into the *same* shared field once field-promotion runs)
+  that was previously invisible until you read the generated code.
+
+Not exhaustive by design — a node kind not in the role table just doesn't
+contribute to the registry; a `{name}` reference to it still works, only
+without prefix-dropping or picker/conflict support until it's added.
 **Phase 2 (first-class data ports) is still just the design note below**,
 not started — flagged as the place to revisit if a node needs more than
 one variable input at once (interpolation only covers "this whole

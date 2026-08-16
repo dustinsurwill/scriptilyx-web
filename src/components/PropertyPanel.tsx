@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { NodeDefinition, ScriptNode } from '../types/graph'
 import { useGraphStore } from '../store/graphStore'
+import { buildVariableRegistry, type VariableRegistry } from '../lib/variableRegistry'
 
 interface PropertyPanelProps {
   scriptNode: ScriptNode | undefined
@@ -13,11 +14,11 @@ interface PropertyPanelProps {
  * called "Text", say) don't collide. */
 const PROPERTY_HELP: Record<string, string> = {
   'logic.echo:Text':
-    'Insert a variable’s value with {name}. Defaults to a number variable; use {text:name} or {bool:name} to read a text or bool variable instead.',
-  'block.set_lcd_text:Text': 'Insert a variable’s value with {name} (or {text:name} / {bool:name}). See the Echo node for details.',
-  'block.set_lcd_group_text:Text': 'Insert a variable’s value with {name} (or {text:name} / {bool:name}). See the Echo node for details.',
-  'ext.lcd.append:Text': 'Insert a variable’s value with {name} (or {text:name} / {bool:name}). See the Echo node for details.',
-  'ext.lcd.group_append:Text': 'Insert a variable’s value with {name} (or {text:name} / {bool:name}). See the Echo node for details.',
+    'Insert a variable’s value with {name} — picks up its declared type automatically. Use {text:name}/{bool:name}/{num:name} only to override, or for a variable not declared anywhere else yet.',
+  'block.set_lcd_text:Text': 'Insert a variable’s value with {name}. See the Echo node for details.',
+  'block.set_lcd_group_text:Text': 'Insert a variable’s value with {name}. See the Echo node for details.',
+  'ext.lcd.append:Text': 'Insert a variable’s value with {name}. See the Echo node for details.',
+  'ext.lcd.group_append:Text': 'Insert a variable’s value with {name}. See the Echo node for details.',
   'var.calculate:Formula':
     'Number-variable names and arithmetic only: + - * / ( ). Supported functions: sqrt, abs, min, max, floor, ceil, round, sin, cos, tan, pow. Example: "a + sqrt(b) * 2".',
 }
@@ -30,9 +31,57 @@ function isVariableReference(value: string): boolean {
   return /^\{[^{}]+\}$/.test(value.trim())
 }
 
+const KIND_LABEL: Record<'num' | 'text' | 'bool', string> = { num: 'Number', text: 'Text', bool: 'Bool' }
+
+/** A dropdown of every variable the graph-wide registry already knows
+ * about (see src/lib/variableRegistry.ts), grouped by declared type.
+ * Picking one inserts a plain "{name}" — no kind prefix needed, since the
+ * registry is exactly what lets that prefix be dropped. `mode: 'replace'`
+ * is for whole-value reference fields (Enabled, Percent, ...); `'append'`
+ * is for template-string fields (Echo/LCD Text) where the reference sits
+ * alongside literal text. */
+function VariablePicker({
+  registry,
+  mode,
+  onInsert,
+}: {
+  registry: VariableRegistry
+  mode: 'replace' | 'append'
+  onInsert: (token: string) => void
+}) {
+  const hasAny = registry.namesByKind.num.length + registry.namesByKind.text.length + registry.namesByKind.bool.length > 0
+  if (!hasAny) return null
+  return (
+    <select
+      value=""
+      title={mode === 'replace' ? 'Use this variable instead of a fixed value' : 'Insert a reference to this variable'}
+      onChange={(e) => {
+        if (e.target.value) onInsert(`{${e.target.value}}`)
+      }}
+      style={{ flex: '0 0 auto', maxWidth: 120 }}
+    >
+      <option value="">{mode === 'replace' ? 'Variable…' : 'Insert…'}</option>
+      {(['num', 'text', 'bool'] as const).map(
+        (kind) =>
+          registry.namesByKind[kind].length > 0 && (
+            <optgroup key={kind} label={KIND_LABEL[kind]}>
+              {registry.namesByKind[kind].map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </optgroup>
+          ),
+      )}
+    </select>
+  )
+}
+
 export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
   const updateNodeProperty = useGraphStore((s) => s.updateNodeProperty)
   const checkpoint = useGraphStore((s) => s.checkpoint)
+  const allNodes = useGraphStore((s) => s.nodes)
+  const registry = useMemo(() => buildVariableRegistry(allNodes), [allNodes])
   // Combo/bool properties normally render as a fixed <select>; a key in
   // this set is manually switched to a text input so its value can be a
   // {name}/{bool:name} variable reference instead of a literal option.
@@ -70,28 +119,50 @@ export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
             {help && (
               <div style={{ marginBottom: 4, fontSize: 11, opacity: 0.65, lineHeight: 1.4 }}>{help}</div>
             )}
-            {type === 'multiline' ? (
-              <textarea
-                value={value}
-                onFocus={checkpoint}
-                onChange={(e) => updateNodeProperty(scriptNode.Id, key, e.target.value)}
-                rows={5}
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  fontFamily: key === 'Code' ? 'monospace' : 'inherit',
-                }}
-              />
+            {type === 'multiline' || (type === 'text' && help) ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {type === 'multiline' ? (
+                  <textarea
+                    value={value}
+                    onFocus={checkpoint}
+                    onChange={(e) => updateNodeProperty(scriptNode.Id, key, e.target.value)}
+                    rows={5}
+                    style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      fontFamily: key === 'Code' ? 'monospace' : 'inherit',
+                    }}
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={value}
+                    onFocus={checkpoint}
+                    onChange={(e) => updateNodeProperty(scriptNode.Id, key, e.target.value)}
+                    style={{ width: '100%', boxSizing: 'border-box' }}
+                  />
+                )}
+                <VariablePicker
+                  registry={registry}
+                  mode="append"
+                  onInsert={(token) => updateNodeProperty(scriptNode.Id, key, value ? `${value} ${token}` : token)}
+                />
+              </div>
             ) : type === 'combo' || type === 'bool' ? (
               manualKeys.has(key) || isVariableReference(value) ? (
                 <div style={{ display: 'flex', gap: 4 }}>
                   <input
                     type="text"
                     value={value}
-                    placeholder="{myVar} or {bool:myVar}"
+                    placeholder="{myVar}"
                     onFocus={checkpoint}
                     onChange={(e) => updateNodeProperty(scriptNode.Id, key, e.target.value)}
                     style={{ width: '100%', boxSizing: 'border-box' }}
+                  />
+                  <VariablePicker
+                    registry={registry}
+                    mode="replace"
+                    onInsert={(token) => updateNodeProperty(scriptNode.Id, key, token)}
                   />
                   <button
                     type="button"
@@ -134,6 +205,21 @@ export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
                   </button>
                 </div>
               )
+            ) : type === 'number' ? (
+              <div style={{ display: 'flex', gap: 4 }}>
+                <input
+                  type="text"
+                  value={value}
+                  onFocus={checkpoint}
+                  onChange={(e) => updateNodeProperty(scriptNode.Id, key, e.target.value)}
+                  style={{ width: '100%', boxSizing: 'border-box' }}
+                />
+                <VariablePicker
+                  registry={registry}
+                  mode="replace"
+                  onInsert={(token) => updateNodeProperty(scriptNode.Id, key, token)}
+                />
+              </div>
             ) : (
               <input
                 type="text"
