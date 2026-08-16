@@ -210,6 +210,53 @@ describe('remapLegacyGraph', () => {
     expect(result.Nodes[0].Properties).toEqual({ Name: 'flag', Value: 'True' })
   })
 
+  it('folds the retired AI-Block/Event-Controller Enabled/Working checks onto the generic block ones', () => {
+    const data: GraphSaveData = {
+      Nodes: [
+        legacyNode({
+          DefinitionId: 'ai.if_enabled',
+          ActionType: 'IfAiBlockEnabled',
+          Title: 'If AI Block Enabled',
+          Properties: { BlockName: 'AI Flight' },
+        }),
+        legacyNode({
+          Id: 'n2',
+          DefinitionId: 'event_controller.if_working',
+          ActionType: 'IfEventControllerWorking',
+          Title: 'If Event Controller Working',
+          Properties: { BlockName: 'Event Controller' },
+        }),
+      ],
+      Connections: [],
+      NextNodeNumber: 3,
+      Zoom: 1,
+    }
+    const result = remapLegacyGraph(data)
+    expect(result.Nodes[0].DefinitionId).toBe('ext.generic.if_enabled')
+    expect(result.Nodes[0].Properties).toEqual({ BlockName: 'AI Flight' })
+    expect(result.Nodes[1].DefinitionId).toBe('ext.generic.if_working')
+    expect(result.Nodes[1].Properties).toEqual({ BlockName: 'Event Controller' })
+  })
+
+  it('folds the retired If Timer Enabled onto the generic If Block Enabled', () => {
+    const data: GraphSaveData = {
+      Nodes: [
+        legacyNode({
+          DefinitionId: 'ext.timer.if_enabled',
+          ActionType: 'ExtendedBuiltin',
+          Title: 'If Timer Enabled',
+          Properties: { BlockName: 'Timer Block' },
+        }),
+      ],
+      Connections: [],
+      NextNodeNumber: 2,
+      Zoom: 1,
+    }
+    const result = remapLegacyGraph(data)
+    expect(result.Nodes[0].DefinitionId).toBe('ext.generic.if_enabled')
+    expect(result.Nodes[0].Properties).toEqual({ BlockName: 'Timer Block' })
+  })
+
   it('leaves nodes with a current or unknown DefinitionId untouched', () => {
     const data: GraphSaveData = {
       Nodes: [legacyNode({ DefinitionId: 'block.set_enabled', Title: 'Set Block Enabled' }), legacyNode({ Id: 'n2', DefinitionId: 'totally.unknown.id' })],

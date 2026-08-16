@@ -428,14 +428,34 @@ combo replacing two nodes:
   *variable*, not a terminal property — different emitter shape from the
   above) merged into one node with a `Value: True|False` combo.
 
-285 catalog nodes (was 295). The sweep found nothing else — no further
-True/False or Above/Below duplicate pairs remain anywhere in the catalog.
-(Deliberately *not* touched: state-named pairs like `If Piston Fully
-Extended`/`Retracted` or `If Air Vent Pressurized`/`Depressurized` — those
-aren't simple direction/boolean flips of the same measurement the way
-Above/Below pairs are, so a generalized merge there would be a
-`Door State`-style named-state combo, a different and separate design
-question from what was asked here.)
+285 catalog nodes (was 295). The sweep found no more True/False or
+Above/Below duplicate pairs. (Deliberately *not* touched: state-named
+pairs like `If Piston Fully Extended`/`Retracted` or `If Air Vent
+Pressurized`/`Depressurized` — those aren't simple direction/boolean flips
+of the same measurement the way Above/Below pairs are, so a generalized
+merge there would be a `Door State`-style named-state combo, a different
+and separate design question from what was asked here.)
+
+A follow-up question ("isn't `If [block type] Enabled/Working` the same
+as `If Block Enabled/Working`?") caught a related but different
+duplication the Above/Below sweep didn't check for: **identical emitters
+under different names**, not same-shape opposite-direction pairs.
+`IfAiBlockEnabled`/`IfEventControllerEnabled` and `ext.timer.if_enabled`
+all called the exact same `blockCondition('IMyFunctionalBlock', v =>
+`${v}.Enabled`)` as `If Block Enabled` — same for `*Working` and
+`isWorkingCondition()`. Confirmed by grepping every `blockCondition`/
+`isWorkingCondition` call site for duplicate arguments rather than by
+title pattern. Deleted `If AI/Event Controller Block Enabled/Working` and
+`If Timer Enabled` outright (same treatment as the earlier `Set AI Block
+Enabled`-style preset folds — a generic equivalent already existed, so no
+merged node needed, just delete + enrich the generic one's `Search` +
+legacy remap). Also let `isWorkingCondition` itself be deleted from
+`emitters.ts` as dead code once nothing called it anymore. 280 catalog
+nodes now. Worth flagging as a **different kind of check** to keep running
+periodically as the catalog evolves — the Above/Below sweep (same title,
+opposite suffix) wouldn't have caught this, since `If AI Block Enabled`
+and `If Block Enabled` don't share a title pattern at all, only an
+identical emitter call.
 
 ### Property library for Get/Set-Property nodes (documented, not started)
 

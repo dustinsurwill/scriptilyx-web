@@ -2243,52 +2243,6 @@
    "Preview": "Set AI int {PropertyId} = {Value}"
   },
   {
-   "Id": "ai.if_enabled",
-   "Category": "✅ Checks",
-   "Title": "If AI Block Enabled",
-   "Description": "Checks whether an AI block is enabled.",
-   "Search": "ai if enabled condition",
-   "ActionType": "IfAiBlockEnabled",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "AI Flight",
-     "Options": []
-    }
-   },
-   "Preview": "If AI block enabled"
-  },
-  {
-   "Id": "ai.if_working",
-   "Category": "✅ Checks",
-   "Title": "If AI Block Working",
-   "Description": "Checks whether an AI block is working.",
-   "Search": "ai if working condition",
-   "ActionType": "IfAiBlockWorking",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "AI Flight",
-     "Options": []
-    }
-   },
-   "Preview": "If AI block working"
-  },
-  {
    "Id": "ai.if_offensive_has_target",
    "Category": "✅ Checks",
    "Title": "If AI Offensive Has Target",
@@ -2555,52 +2509,6 @@
     }
    },
    "Preview": "Set Event int {PropertyId} = {Value}"
-  },
-  {
-   "Id": "event_controller.if_enabled",
-   "Category": "✅ Checks",
-   "Title": "If Event Controller Enabled",
-   "Description": "Checks whether an Event Controller is enabled.",
-   "Search": "event controller if enabled",
-   "ActionType": "IfEventControllerEnabled",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Event Controller",
-     "Options": []
-    }
-   },
-   "Preview": "If Event Controller enabled"
-  },
-  {
-   "Id": "event_controller.if_working",
-   "Category": "✅ Checks",
-   "Title": "If Event Controller Working",
-   "Description": "Checks whether an Event Controller is working.",
-   "Search": "event controller if working",
-   "ActionType": "IfEventControllerWorking",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Event Controller",
-     "Options": []
-    }
-   },
-   "Preview": "If Event Controller working"
   },
   {
    "Id": "event_controller.if_triggered",
@@ -3751,7 +3659,7 @@
    "Category": "✅ Checks",
    "Title": "If Block Working",
    "Description": "Checks IMyCubeBlock.IsWorking on a named block.",
-   "Search": "block working isworking check",
+   "Search": "block working isworking check ai block event controller",
    "ActionType": "ExtendedBuiltin",
    "InputPorts": [
     "In"
@@ -3797,7 +3705,7 @@
    "Category": "✅ Checks",
    "Title": "If Block Enabled",
    "Description": "Checks Enabled on a named functional block.",
-   "Search": "block enabled disabled check",
+   "Search": "block enabled disabled check ai block event controller timer",
    "ActionType": "ExtendedBuiltin",
    "InputPorts": [
     "In"
@@ -5284,29 +5192,6 @@
     }
    },
    "Preview": "{BlockName} counting down"
-  },
-  {
-   "Id": "ext.timer.if_enabled",
-   "Category": "✅ Checks",
-   "Title": "If Timer Enabled",
-   "Description": "Checks whether a Timer Block is enabled.",
-   "Search": "timer enabled check",
-   "ActionType": "ExtendedBuiltin",
-   "InputPorts": [
-    "In"
-   ],
-   "OutputPorts": [
-    "True",
-    "False"
-   ],
-   "Properties": {
-    "BlockName": {
-     "Type": "text",
-     "DefaultValue": "Timer Block",
-     "Options": []
-    }
-   },
-   "Preview": "{BlockName} enabled"
   },
   {
    "Id": "ext.timer.start_delay",

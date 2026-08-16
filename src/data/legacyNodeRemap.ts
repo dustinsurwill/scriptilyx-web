@@ -3,9 +3,10 @@
 // button-command presets, Above/Below threshold pairs, Wheel boolean on/off
 // presets, the Add/Subtract/Multiply/Divide/Equals number-variable nodes, the
 // AI-Block/Event-Controller/generic-terminal True/False and Above/Below check
-// pairs, and the Rotor Angle / Bool Variable True/False pairs) onto their
-// replacement in the current catalog, so a legacy `.segraph` opened here still
-// resolves to a real node definition.
+// pairs, the Rotor Angle / Bool Variable True/False pairs, and the AI-Block/
+// Event-Controller/Timer Enabled/Working checks duplicating the generic block
+// ones) onto their replacement in the current catalog, so a legacy `.segraph`
+// opened here still resolves to a real node definition.
 // See docs/PLAN.md -> "Native catalog cleanup" for the design rationale.
 export interface LegacyNodeRemap {
   newId: string
@@ -126,4 +127,9 @@ export const LEGACY_NODE_ID_REMAP: Record<string, LegacyNodeRemap> = {
   "mechanical.if_rotor_angle_below": { newId: "mechanical.rotor_angle_threshold", properties: { "Direction": "Below" } },
   "ext.bool.if_true": { newId: "ext.bool.if", properties: { "Value": "True" } },
   "ext.bool.if_false": { newId: "ext.bool.if", properties: { "Value": "False" } },
+  "ai.if_enabled": { newId: "ext.generic.if_enabled", properties: {  } },
+  "event_controller.if_enabled": { newId: "ext.generic.if_enabled", properties: {  } },
+  "ai.if_working": { newId: "ext.generic.if_working", properties: {  } },
+  "event_controller.if_working": { newId: "ext.generic.if_working", properties: {  } },
+  "ext.timer.if_enabled": { newId: "ext.generic.if_enabled", properties: {  } },
 }

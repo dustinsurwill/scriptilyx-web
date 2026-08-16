@@ -173,14 +173,6 @@ function terminalAction(nameKey = 'BlockName'): NodeEmitter {
   }
 }
 
-function isWorkingCondition(negate = false): NodeEmitter {
-  return (node, ctx) => {
-    ctx.useHelper('GetBlock')
-    const expr = `GetBlock(${stringLiteral(prop(node, 'BlockName'))})?.IsWorking ?? false`
-    return { kind: 'condition', expression: negate ? `!(${expr})` : expr }
-  }
-}
-
 // ---------------------------------------------------------------------------
 // LCD / text-panel writer, reused by every "write status to an LCD" node.
 // ---------------------------------------------------------------------------
@@ -533,8 +525,6 @@ export const genericEmitters: Record<string, NodeEmitter> = {
   SetAiBlockString: terminalPropertySetter('string', (n) => stringLiteral(prop(n, 'Value'))),
   SetAiBlockInt: terminalPropertySetter('long', (n) => `(long)${numberLiteral(prop(n, 'Value'))}`),
   SetAiStatusLcd: statusLcd,
-  IfAiBlockEnabled: blockCondition('IMyFunctionalBlock', (v) => `${v}.Enabled`),
-  IfAiBlockWorking: isWorkingCondition(),
   IfAiOffensiveHasTarget: terminalPropertyCondition('bool', (get) => get),
   IfAiBlockBool: terminalBoolPropertyCondition(),
   IfAiBlockFloat: terminalFloatThresholdCondition(),
@@ -548,8 +538,6 @@ export const genericEmitters: Record<string, NodeEmitter> = {
   SetEventControllerString: terminalPropertySetter('string', (n) => stringLiteral(prop(n, 'Value'))),
   SetEventControllerInt: terminalPropertySetter('long', (n) => `(long)${numberLiteral(prop(n, 'Value'))}`),
   SetEventControllerStatusLcd: statusLcd,
-  IfEventControllerEnabled: blockCondition('IMyFunctionalBlock', (v) => `${v}.Enabled`),
-  IfEventControllerWorking: isWorkingCondition(),
   IfEventControllerTriggered: terminalPropertyCondition('bool', (get) => get),
   IfEventControllerBool: terminalBoolPropertyCondition(),
   IfEventControllerFloat: terminalFloatThresholdCondition(),

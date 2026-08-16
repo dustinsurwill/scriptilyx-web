@@ -478,7 +478,6 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
 
   // --- Timer --------------------------------------------------------------
   'ext.timer.if_counting': blockCondition('IMyTimerBlock', (v) => `${v}.IsCountingDown`),
-  'ext.timer.if_enabled': blockCondition('IMyFunctionalBlock', (v) => `${v}.Enabled`),
   'ext.timer.start_delay': (node, ctx) => {
     ctx.useHelper('GetBlock')
     const name = stringLiteral(prop(node, 'BlockName'))
