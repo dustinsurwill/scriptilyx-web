@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import {
   ReactFlow,
   Background,
@@ -28,6 +28,11 @@ export function GraphCanvas() {
   const connect = useGraphStore((s) => s.connect)
   const selectNode = useGraphStore((s) => s.selectNode)
   const selectConnection = useGraphStore((s) => s.selectConnection)
+  const checkpoint = useGraphStore((s) => s.checkpoint)
+  // React Flow reports a position change on every frame of a drag, not just
+  // at the end. Tracking which node IDs are mid-drag lets us take one undo
+  // checkpoint per drag gesture instead of one per pixel.
+  const draggingNodeIds = useRef(new Set<string>())
 
   const flowNodes: ScriptGraphNodeType[] = useMemo(
     () =>
@@ -67,6 +72,14 @@ export function GraphCanvas() {
   const onNodesChange: OnNodesChange<ScriptGraphNodeType> = (changes) => {
     for (const change of changes) {
       if (change.type === 'position' && change.position) {
+        if (change.dragging) {
+          if (!draggingNodeIds.current.has(change.id)) {
+            draggingNodeIds.current.add(change.id)
+            checkpoint()
+          }
+        } else {
+          draggingNodeIds.current.delete(change.id)
+        }
         moveNode(change.id, change.position)
       } else if (change.type === 'remove') {
         deleteNode(change.id)
