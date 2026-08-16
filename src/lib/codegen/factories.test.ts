@@ -3,6 +3,7 @@ import {
   blockCondition,
   blockMethodCall,
   blockPropertySetter,
+  blockThresholdCondition,
   groupCondition,
   groupMethodCall,
   groupPropertySetter,
@@ -10,6 +11,8 @@ import {
   lcdAppend,
   lcdGroupWrite,
   lcdWrite,
+  resolvableBool,
+  resolvableNumber,
   terminalAction,
   terminalActionByNameContains,
   terminalPropertyCondition,
@@ -163,5 +166,48 @@ describe('LCD writers', () => {
     expect(statementsOf(emit)[0]).toBe(
       'foreach (var blk in GetGroupBlocks("LCDs")) { if (blk is IMyTextSurface v) v.WriteText("hi", true); }',
     )
+  })
+})
+
+describe('resolvableBool / resolvableNumber (property-as-variable interpolation)', () => {
+  it('resolvableBool falls back to a literal for a plain true/false value', () => {
+    const node = makeNode({ ActionType: 'X', Properties: { Enabled: 'true' } })
+    expect(resolvableBool(node, 'Enabled', fakeContext())).toBe('true')
+  })
+
+  it('resolvableBool reads a bare {name} reference as a bool variable (no kind prefix needed)', () => {
+    const node = makeNode({ ActionType: 'X', Properties: { Enabled: '{myFlag}' } })
+    expect(resolvableBool(node, 'Enabled', fakeContext())).toBe('GetBool("myFlag")')
+  })
+
+  it('resolvableBool honors an explicit {bool:name} prefix', () => {
+    const node = makeNode({ ActionType: 'X', Properties: { Enabled: '{bool:myFlag}' } })
+    expect(resolvableBool(node, 'Enabled', fakeContext())).toBe('GetBool("myFlag")')
+  })
+
+  it('resolvableBool treats a value with surrounding text as a literal, not an interpolation', () => {
+    const node = makeNode({ ActionType: 'X', Properties: { Enabled: 'prefix {myFlag} suffix' } })
+    expect(resolvableBool(node, 'Enabled', fakeContext())).toBe('false')
+  })
+
+  it('resolvableNumber falls back to a numberLiteral for a plain numeric value', () => {
+    const node = makeNode({ ActionType: 'X', Properties: { Percent: '90' } })
+    expect(resolvableNumber(node, 'Percent', fakeContext())).toBe('90d')
+  })
+
+  it('resolvableNumber reads a bare {name} reference as a num variable', () => {
+    const node = makeNode({ ActionType: 'X', Properties: { Percent: '{threshold}' } })
+    expect(resolvableNumber(node, 'Percent', fakeContext())).toBe('GetNum("threshold")')
+  })
+})
+
+describe('blockThresholdCondition', () => {
+  it('Percent/Meters/etc. can be a variable reference via the same interpolation syntax', () => {
+    const node = makeNode({
+      ActionType: 'X',
+      Properties: { BlockName: 'Battery', Direction: 'Below', Percent: '{myThreshold}' },
+    })
+    const emit = blockThresholdCondition('IMyBatteryBlock', (v) => `${v}.Charge`, 'Percent')(node, fakeContext())
+    expect(expressionOf(emit)).toBe('GetBlock("Battery") is IMyBatteryBlock v && v.Charge < GetNum("myThreshold")')
   })
 })

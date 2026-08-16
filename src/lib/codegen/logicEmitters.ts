@@ -1,5 +1,5 @@
 import type { ScriptNode } from '../../types/graph'
-import { interpolatedTextExpr } from './factories'
+import { interpolatedTextExpr, resolvableNumber } from './factories'
 import { sanitizeIdentifier, stringLiteral } from './format'
 import type { NodeEmitter } from './types'
 
@@ -243,7 +243,7 @@ export const numberCompareEmitter: NodeEmitter = (node, ctx) => {
   const op = NUMBER_COMPARE_OPERATORS.has(operator) ? operator : '>'
   return {
     kind: 'condition',
-    expression: `GetNum(${stringLiteral(prop(node, 'Name'))}) ${op} ${prop(node, 'Value') || '0'}`,
+    expression: `GetNum(${stringLiteral(prop(node, 'Name'))}) ${op} ${resolvableNumber(node, 'Value', ctx)}`,
   }
 }
 

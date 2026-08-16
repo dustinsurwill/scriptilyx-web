@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { NodeDefinition, ScriptNode } from '../types/graph'
 import { useGraphStore } from '../store/graphStore'
 
@@ -21,9 +22,26 @@ const PROPERTY_HELP: Record<string, string> = {
     'Number-variable names and arithmetic only: + - * / ( ). Supported functions: sqrt, abs, min, max, floor, ceil, round, sin, cos, tan, pow. Example: "a + sqrt(b) * 2".',
 }
 
+/** True for a value like "{myFlag}" or "{bool:myFlag}" — a whole-value
+ * variable reference, same interpolation syntax as Echo/LCD text, applied
+ * to a combo/number property instead of a string template. See
+ * resolvableBool/resolvableNumber in src/lib/codegen/factories.ts. */
+function isVariableReference(value: string): boolean {
+  return /^\{[^{}]+\}$/.test(value.trim())
+}
+
 export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
   const updateNodeProperty = useGraphStore((s) => s.updateNodeProperty)
   const checkpoint = useGraphStore((s) => s.checkpoint)
+  // Combo/bool properties normally render as a fixed <select>; a key in
+  // this set is manually switched to a text input so its value can be a
+  // {name}/{bool:name} variable reference instead of a literal option.
+  // Reset whenever the selected node changes so it doesn't leak onto an
+  // unrelated node that happens to share a property key.
+  const [manualKeys, setManualKeys] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    setManualKeys(new Set())
+  }, [scriptNode?.Id])
 
   if (!scriptNode) {
     return (
@@ -65,18 +83,57 @@ export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
                 }}
               />
             ) : type === 'combo' || type === 'bool' ? (
-              <select
-                value={value}
-                onFocus={checkpoint}
-                onChange={(e) => updateNodeProperty(scriptNode.Id, key, e.target.value)}
-                style={{ width: '100%', boxSizing: 'border-box' }}
-              >
-                {(propDef?.Options.length ? propDef.Options : ['true', 'false']).map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
+              manualKeys.has(key) || isVariableReference(value) ? (
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <input
+                    type="text"
+                    value={value}
+                    placeholder="{myVar} or {bool:myVar}"
+                    onFocus={checkpoint}
+                    onChange={(e) => updateNodeProperty(scriptNode.Id, key, e.target.value)}
+                    style={{ width: '100%', boxSizing: 'border-box' }}
+                  />
+                  <button
+                    type="button"
+                    title="Switch back to a fixed value"
+                    onClick={() => {
+                      setManualKeys((prev) => {
+                        const next = new Set(prev)
+                        next.delete(key)
+                        return next
+                      })
+                      const fallback = propDef?.Options[0] ?? 'true'
+                      if (isVariableReference(value)) updateNodeProperty(scriptNode.Id, key, fallback)
+                    }}
+                    style={{ flex: '0 0 auto' }}
+                  >
+                    Fixed
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <select
+                    value={value}
+                    onFocus={checkpoint}
+                    onChange={(e) => updateNodeProperty(scriptNode.Id, key, e.target.value)}
+                    style={{ width: '100%', boxSizing: 'border-box' }}
+                  >
+                    {(propDef?.Options.length ? propDef.Options : ['true', 'false']).map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    title="Use a variable instead of a fixed value"
+                    onClick={() => setManualKeys((prev) => new Set(prev).add(key))}
+                    style={{ flex: '0 0 auto' }}
+                  >
+                    {'{ }'}
+                  </button>
+                </div>
+              )
             ) : (
               <input
                 type="text"

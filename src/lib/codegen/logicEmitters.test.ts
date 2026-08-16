@@ -44,12 +44,17 @@ describe('numberCompareEmitter', () => {
     const node = makeNode({ ActionType: 'NumberCompare', Properties: { Name: 'n', Operator: operator, Value: '5' } })
     const emit = numberCompareEmitter(node, fakeContext())
     expect(emit.kind).toBe('condition')
-    expect(expressionOf(emit)).toBe(`GetNum("n") ${expected} 5`)
+    expect(expressionOf(emit)).toBe(`GetNum("n") ${expected} 5d`)
   })
 
   it('falls back to > for an unrecognized/missing operator', () => {
     const node = makeNode({ ActionType: 'NumberCompare', Properties: { Name: 'n', Operator: '', Value: '5' } })
-    expect(expressionOf(numberCompareEmitter(node, fakeContext()))).toBe('GetNum("n") > 5')
+    expect(expressionOf(numberCompareEmitter(node, fakeContext()))).toBe('GetNum("n") > 5d')
+  })
+
+  it('Value can be a variable reference instead of a literal', () => {
+    const node = makeNode({ ActionType: 'NumberCompare', Properties: { Name: 'n', Operator: '>', Value: '{threshold}' } })
+    expect(expressionOf(numberCompareEmitter(node, fakeContext()))).toBe('GetNum("n") > GetNum("threshold")')
   })
 })
 

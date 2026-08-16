@@ -113,7 +113,7 @@ export function blockThresholdCondition(
     const operator = prop(node, 'Direction') === 'Below' ? '<' : '>'
     return {
       kind: 'condition',
-      expression: `GetBlock(${stringLiteral(prop(node, nameKey))}) is ${iface} v && ${valueExpr('v')} ${operator} ${numberLiteral(prop(node, valueKey))}`,
+      expression: `GetBlock(${stringLiteral(prop(node, nameKey))}) is ${iface} v && ${valueExpr('v')} ${operator} ${resolvableNumber(node, valueKey, ctx)}`,
     }
   }
 }
@@ -143,11 +143,11 @@ export const lockedValue = (node: ScriptNode) => boolLiteral(prop(node, 'Locked'
 // a type other than number). Shared by Echo and every LCD-text emitter.
 // ---------------------------------------------------------------------------
 
-/** Reads a `{kind:name}` or `{name}` (kind defaults to "num") interpolation
- * hole and returns the C# read expression for it. */
-function resolveInterpolationHole(expr: string): string {
+/** Reads a `{kind:name}` or `{name}` (kind defaults to `defaultKind`)
+ * interpolation hole and returns the C# read expression for it. */
+function resolveInterpolationHole(expr: string, defaultKind: 'num' | 'text' | 'bool' = 'num'): string {
   const match = /^(num|text|bool)\s*:\s*(.+)$/i.exec(expr.trim())
-  const kind = match ? match[1].toLowerCase() : 'num'
+  const kind = match ? match[1].toLowerCase() : defaultKind
   const name = (match ? match[2] : expr).trim()
   const getter = kind === 'text' ? 'GetText' : kind === 'bool' ? 'GetBool' : 'GetNum'
   return `${getter}(${stringLiteral(name)})`
@@ -161,6 +161,41 @@ export function interpolatedTextExpr(node: ScriptNode, ctx: EmitContext, key = '
   if (!hasInterpolation(template)) return stringLiteral(template)
   ctx.useHelper('Vars')
   return interpolatedStringLiteral(template, resolveInterpolationHole)
+}
+
+/** True if `raw` is *exactly* one `{...}` interpolation hole (as opposed to
+ * embedded inside surrounding text) — the shape a non-text property (a
+ * combo/bool/number field, which has no room for a template) needs to
+ * opt into reading a variable instead of a fixed literal. */
+function isPureInterpolation(raw: string): boolean {
+  return /^\{[^{}]+\}$/.test(raw.trim())
+}
+
+/**
+ * Resolves a bool-typed property (Enabled, Locked, ...) that may be either
+ * a literal `"true"`/`"false"` or a single `{myFlag}`/`{bool:myFlag}`
+ * variable reference — same interpolation syntax already used by Echo/LCD
+ * text, just applied to a whole property value instead of embedded in a
+ * string. Lets nodes like SetBlockEnabled be driven by a variable instead
+ * of only a fixed combo value.
+ */
+export function resolvableBool(node: ScriptNode, key: string, ctx: EmitContext): string {
+  const raw = prop(node, key)
+  if (isPureInterpolation(raw)) {
+    ctx.useHelper('Vars')
+    return resolveInterpolationHole(raw.trim().slice(1, -1), 'bool')
+  }
+  return boolLiteral(raw)
+}
+
+/** Same as `resolvableBool`, for number-typed properties (Percent, Value, ...). */
+export function resolvableNumber(node: ScriptNode, key: string, ctx: EmitContext): string {
+  const raw = prop(node, key)
+  if (isPureInterpolation(raw)) {
+    ctx.useHelper('Vars')
+    return resolveInterpolationHole(raw.trim().slice(1, -1), 'num')
+  }
+  return numberLiteral(raw)
 }
 
 // ---------------------------------------------------------------------------

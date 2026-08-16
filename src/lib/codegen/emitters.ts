@@ -1,5 +1,5 @@
 import type { ScriptNode } from '../../types/graph'
-import { interpolatedTextExpr } from './factories'
+import { interpolatedTextExpr, resolvableBool, resolvableNumber } from './factories'
 import type { EmitContext, NodeEmitter } from './types'
 import { boolLiteral, numberLiteral, stringLiteral } from './format'
 
@@ -19,7 +19,7 @@ function prop(node: ScriptNode, key: string): string {
 function blockPropertySetter(
   iface: string,
   member: string,
-  valueExpr: (node: ScriptNode) => string,
+  valueExpr: (node: ScriptNode, ctx: EmitContext) => string,
   nameKey = 'BlockName',
 ): NodeEmitter {
   return (node, ctx) => {
@@ -27,7 +27,7 @@ function blockPropertySetter(
     return {
       kind: 'action',
       statements: [
-        `{ if (GetBlock(${stringLiteral(prop(node, nameKey))}) is ${iface} v) v.${member} = ${valueExpr(node)}; }`,
+        `{ if (GetBlock(${stringLiteral(prop(node, nameKey))}) is ${iface} v) v.${member} = ${valueExpr(node, ctx)}; }`,
         ctx.next(node, 'Next'),
       ],
     }
@@ -52,7 +52,7 @@ function blockMethodCall(iface: string, method: string, nameKey = 'BlockName'): 
 function groupPropertySetter(
   iface: string,
   member: string,
-  valueExpr: (node: ScriptNode) => string,
+  valueExpr: (node: ScriptNode, ctx: EmitContext) => string,
   nameKey = 'GroupName',
 ): NodeEmitter {
   return (node, ctx) => {
@@ -60,7 +60,7 @@ function groupPropertySetter(
     return {
       kind: 'action',
       statements: [
-        `foreach (var blk in GetGroupBlocks(${stringLiteral(prop(node, nameKey))})) { if (blk is ${iface} v) v.${member} = ${valueExpr(node)}; }`,
+        `foreach (var blk in GetGroupBlocks(${stringLiteral(prop(node, nameKey))})) { if (blk is ${iface} v) v.${member} = ${valueExpr(node, ctx)}; }`,
         ctx.next(node, 'Next'),
       ],
     }
@@ -99,13 +99,13 @@ function blockThresholdCondition(
     const operator = prop(node, 'Direction') === 'Below' ? '<' : '>'
     return {
       kind: 'condition',
-      expression: `GetBlock(${stringLiteral(prop(node, nameKey))}) is ${iface} v && ${valueExpr('v')} ${operator} ${numberLiteral(prop(node, valueKey))}`,
+      expression: `GetBlock(${stringLiteral(prop(node, nameKey))}) is ${iface} v && ${valueExpr('v')} ${operator} ${resolvableNumber(node, valueKey, ctx)}`,
     }
   }
 }
 
-const enabledValue = (node: ScriptNode) => boolLiteral(prop(node, 'Enabled'))
-const lockedValue = (node: ScriptNode) => boolLiteral(prop(node, 'Locked'))
+const enabledValue = (node: ScriptNode, ctx: EmitContext) => resolvableBool(node, 'Enabled', ctx)
+const lockedValue = (node: ScriptNode, ctx: EmitContext) => resolvableBool(node, 'Locked', ctx)
 
 // ---------------------------------------------------------------------------
 // Generic terminal-block property access — works for every block/PB feature
@@ -118,14 +118,14 @@ const lockedValue = (node: ScriptNode) => boolLiteral(prop(node, 'Locked'))
 
 function terminalPropertySetter<T extends string>(
   csharpType: T,
-  valueExpr: (node: ScriptNode) => string,
+  valueExpr: (node: ScriptNode, ctx: EmitContext) => string,
 ): NodeEmitter {
   return (node, ctx) => {
     ctx.useHelper('GetBlock')
     return {
       kind: 'action',
       statements: [
-        `GetBlock(${stringLiteral(prop(node, 'BlockName'))})?.SetValue<${csharpType}>(${stringLiteral(prop(node, 'PropertyId'))}, ${valueExpr(node)});`,
+        `GetBlock(${stringLiteral(prop(node, 'BlockName'))})?.SetValue<${csharpType}>(${stringLiteral(prop(node, 'PropertyId'))}, ${valueExpr(node, ctx)});`,
         ctx.next(node, 'Next'),
       ],
     }
@@ -206,8 +206,8 @@ const statusLcd: NodeEmitter = lcdWrite(
 
 export const genericEmitters: Record<string, NodeEmitter> = {
   // --- Generic terminal block property access -----------------------------
-  SetTerminalBool: terminalPropertySetter('bool', (n) => boolLiteral(prop(n, 'Value'))),
-  SetTerminalFloat: terminalPropertySetter('float', (n) => numberLiteral(prop(n, 'Value'))),
+  SetTerminalBool: terminalPropertySetter('bool', (n, ctx) => resolvableBool(n, 'Value', ctx)),
+  SetTerminalFloat: terminalPropertySetter('float', (n, ctx) => resolvableNumber(n, 'Value', ctx)),
   SetTerminalInt: terminalPropertySetter('long', (n) => `(long)${numberLiteral(prop(n, 'Value'))}`),
   SetTerminalString: terminalPropertySetter('string', (n) => stringLiteral(prop(n, 'Value'))),
   ApplyTerminalAction: terminalAction(),

@@ -35,10 +35,22 @@ desktop-app exports) keep working. Verified in-browser after each merge
 pass: a retired-id `.segraph` opens with a working, correctly-wired
 replacement node and generates correct code.
 
-Still open within 7.2: whether node properties (e.g. `SetBlockEnabled`'s
-`Enabled`) should be settable from a wired input instead of only a
-literal/combo default — see "Property-as-input" design note below; this is
-an architecture decision, not yet started.
+**Property-as-input, phase 1(interpolation) done.** Went with the smaller
+of the two options from the design note below: `resolvableBool`/
+`resolvableNumber` (`factories.ts`) let a bool/number property be either a
+literal or a whole-value `{name}`/`{bool:name}`/`{num:name}` variable
+reference — the same `{...}` syntax Echo/LCD-text already used mid-string,
+just applied to a property's entire value. Wired into `enabledValue`/
+`lockedValue` (covers all ~20 merged Enabled/Locked nodes from this
+milestone in one place), `SetTerminalBool`/`SetTerminalFloat`, and
+`NumberCompare`/the Above-Below threshold nodes' value key. PropertyPanel
+got a `{ }`/`Fixed` toggle button next to combo/bool fields so this is
+reachable from the UI, not just by hand-editing a save file — normally
+those fields are a fixed `<select>` with no room to type a reference.
+**Phase 2 (first-class data ports) is still just the design note below**,
+not started — flagged as the place to revisit if a node needs more than
+one variable input at once (interpolation only covers "this whole
+property is a variable", not wiring multiple inputs into one node).
 
 - [x] Milestone 1 — Repo/pipeline skeleton (merged in #1)
 - [x] Milestone 2 — Data layer (merged in #2)
@@ -284,38 +296,44 @@ shipped in Milestone 2's data layer:
   the cleaned catalog. Not revisited further this pass — already true of
   the current catalog, nothing left to merge here.
 
-### Property-as-input (design note, not started)
+### Property-as-input
 
-Raised while working 7.2: right now every `NodeDefinition` property (e.g.
-`SetBlockEnabled`'s `Enabled`) is a literal baked in at graph-design time —
-there's no way to wire it from something computed elsewhere in the graph
-(a variable, a check's result, the PB argument). Two ways to get there,
-different cost:
+Raised while working 7.2: a `NodeDefinition` property (e.g.
+`SetBlockEnabled`'s `Enabled`) used to be a literal baked in at
+graph-design time only — no way to wire it from something computed
+elsewhere in the graph (a variable, a check's result, the PB argument).
+Two ways to get there, different cost:
 
-- **Data ports** — add a second port kind beyond today's pure
-  control-flow `Handle`s (`Next`/`True`/`False`/`In`), so e.g.
-  `SetBlockEnabled` gets a `Value` input handle wireable from a
-  `Get Bool Variable` node's output. Correct long-term shape (matches how
-  most node-graph tools do this) but a large change: React Flow node
-  component needs a second handle type, `NodeConnection`/the store need to
-  distinguish control vs. data edges, codegen needs to resolve a data edge
-  to an expression instead of a statement, and validation needs new rules
-  (data ports must resolve to exactly one source, no cycles).
-- **Interpolated property values** — keep properties as plain strings, but
-  let codegen recognize a reference syntax (e.g. `$myBoolVar`) in any
-  property value and emit `GetBool("myBoolVar")`/`GetNum(...)`/
-  `GetText(...)` instead of a literal. No new port/edge concept, no store
-  changes — just a codegen-side check in `prop()`/the emitters before they
-  literal-ize a value, plus a small UI affordance in `PropertyPanel` (a
-  "use variable" toggle next to the literal input). Much smaller, but it's
-  a convention layered on strings rather than a first-class graph
-  connection, so React Flow won't visually show the dependency as a wire.
-
-Recommendation: interpolated values first (small, low-risk, ships fast);
-data ports are the "if this turns out to matter a lot" upgrade later,
-since they're not mutually exclusive — the interpolation syntax could
-even be what an eventual data-port's codegen resolves to internally. Not
-started — needs a decision before either is built.
+- **Interpolated property values** ✅ shipped — properties stay plain
+  strings, but `resolvableBool`/`resolvableNumber` (`factories.ts`)
+  recognize a whole-value `{name}`/`{bool:name}`/`{num:name}` reference
+  (reusing the interpolation syntax Echo/LCD-text already had for
+  mid-string references) and emit `GetBool(...)`/`GetNum(...)` instead of
+  a literal. No new port/edge concept, no store changes — just this check
+  ahead of literal-izing a value, plus a `{ }`/`Fixed` toggle button in
+  `PropertyPanel` next to combo/bool fields (which are otherwise a fixed
+  `<select>` with no room to type a reference). Small, shipped fast, but
+  it's a convention layered on strings rather than a first-class graph
+  connection — React Flow doesn't draw a wire for the dependency, and a
+  node can only take **one** such reference per property (whatever fits in
+  that one string field).
+- **Data ports** — not started; the follow-up if interpolation turns out
+  to be limiting. Add a second port kind beyond today's pure control-flow
+  `Handle`s (`Next`/`True`/`False`/`In`), so e.g. `SetBlockEnabled` gets a
+  `Value` input handle wireable from a `Get Bool Variable` node's output —
+  and unlike a single interpolated string, a node can expose **as many
+  data-input handles as it has properties**, each wired independently (a
+  node needing three inputs, e.g. a fused `Number Compare`-style node fed
+  by three different variables, isn't expressible with interpolation
+  alone). Correct long-term shape (matches how most node-graph tools do
+  this) but a large change: React Flow node component needs a second
+  handle type, `NodeConnection`/the store need to distinguish control vs.
+  data edges, codegen needs to resolve a data edge to an expression
+  instead of a statement, and validation needs new rules (data ports must
+  resolve to exactly one source, no cycles). Not mutually exclusive with
+  interpolation — the `{name}` syntax could stay as what an eventual data
+  port's codegen resolves to internally, or as the escape hatch for nodes
+  that don't warrant a dedicated port.
 
 ## Workflow
 
