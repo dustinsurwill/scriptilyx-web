@@ -5,16 +5,22 @@
 
 ## Status
 
-**Milestone 4 — Codegen is feature-complete (PR #4, branch `codegen-engine`,
-awaiting review/merge).** All 345 node types now have real emitters (no TODO
-stubs); see `docs/codegen-api-notes.md` for the SE ModAPI research behind the
-`ExtendedBuiltin` emitters.
+**Milestone 4 — Codegen merged (#4).** All 345 node types have real emitters
+(no TODO stubs); see `docs/codegen-api-notes.md` for the SE ModAPI research
+behind the `ExtendedBuiltin` emitters. Post-merge follow-ups landed directly
+on `main`: readable method names (`Step_<N>_<Title>` instead of GUIDs),
+dictionary-backed variables promoted to real typed C# fields, `{var}` text
+interpolation (Echo/LCD nodes) and a `Calculate` formula node, an
+auto-inserted `Runtime.UpdateFrequency` when a graph uses a timing node but
+never sets one itself, and a property-level help panel in the editor.
+Confirmed working end-to-end: user-authored script compiles and runs in-game.
+**Now starting Milestone 5 (Minify).**
 
 - [x] Milestone 1 — Repo/pipeline skeleton (merged in #1)
 - [x] Milestone 2 — Data layer (merged in #2)
 - [x] Milestone 3 — Canvas (merged in #3)
-- [x] Milestone 4 — Codegen (#4, open)
-- [ ] Milestone 5 — Minify
+- [x] Milestone 4 — Codegen (merged in #4)
+- [ ] Milestone 5 — Minify (in progress)
 - [ ] Milestone 6 — Persistence
 - [ ] Milestone 7.1 — Stretch: node packs, wizards
 - [ ] Milestone 7.2 — Stretch: cleaned-up native node catalog + `.segraph` import
@@ -142,9 +148,11 @@ No prior art to reuse — new functionality. Since we own the generator
 output format exactly, a full parser isn't needed: strip `//` line comments
 and blank-line runs, trim per-line leading indentation, leave string
 literals untouched (our own generator never emits `//` inside a string, so
-a line-based strip is safe). Toggle next to the script preview; live
-char count against the 60,000/90,000 thresholds for both minified and
-unminified sizes.
+a line-based strip is safe). Toggle next to the script preview; live char
+count against the game's real programmable-block limit (100,000 chars,
+confirmed against the in-game editor) for both minified and unminified
+sizes — green under 80,000, amber 80,000–95,000, red above 95,000, with the
+count itself always shown so it's not just a color guess.
 
 ## Persistence
 

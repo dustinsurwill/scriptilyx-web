@@ -1,19 +1,33 @@
 import { useMemo, useState } from 'react'
 import type { NodeConnection, ScriptNode } from '../types/graph'
-import { generateScript } from '../lib/codegen'
+import { generateScript, minifySource } from '../lib/codegen'
 
 interface ScriptPreviewProps {
   nodes: ScriptNode[]
   connections: NodeConnection[]
 }
 
+// The programmable block's terminal rejects scripts over 100,000 chars.
+const PB_CHAR_LIMIT = 100_000
+const AMBER_THRESHOLD = 80_000
+const RED_THRESHOLD = 95_000
+
+function sizeColor(chars: number): string {
+  if (chars > RED_THRESHOLD) return '#ef4444'
+  if (chars > AMBER_THRESHOLD) return '#f59e0b'
+  return '#22c55e'
+}
+
 export function ScriptPreview({ nodes, connections }: ScriptPreviewProps) {
   const [professionalComments, setProfessionalComments] = useState(false)
+  const [minify, setMinify] = useState(false)
 
   const { source, warnings } = useMemo(
     () => generateScript(nodes, connections, { professionalComments }),
     [nodes, connections, professionalComments],
   )
+  const minified = useMemo(() => minifySource(source), [source])
+  const displayed = minify ? minified : source
 
   return (
     <div
@@ -30,14 +44,28 @@ export function ScriptPreview({ nodes, connections }: ScriptPreviewProps) {
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h2 style={{ fontSize: 14, margin: '0 0 8px' }}>Script</h2>
-        <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <input
-            type="checkbox"
-            checked={professionalComments}
-            onChange={(e) => setProfessionalComments(e.target.checked)}
-          />
-          Header comment
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input
+              type="checkbox"
+              checked={professionalComments}
+              onChange={(e) => setProfessionalComments(e.target.checked)}
+            />
+            Header comment
+          </label>
+          <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input type="checkbox" checked={minify} onChange={(e) => setMinify(e.target.checked)} />
+            Minify
+          </label>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 12, fontSize: 11, margin: '0 0 8px', fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{ color: sizeColor(source.length) }}>
+          Full: {source.length.toLocaleString()} / {PB_CHAR_LIMIT.toLocaleString()} chars
+        </span>
+        <span style={{ color: sizeColor(minified.length) }}>
+          Minified: {minified.length.toLocaleString()} / {PB_CHAR_LIMIT.toLocaleString()} chars
+        </span>
       </div>
       {warnings.length > 0 && (
         <ul style={{ listStyle: 'none', margin: '0 0 8px', padding: 0 }}>
@@ -65,7 +93,7 @@ export function ScriptPreview({ nodes, connections }: ScriptPreviewProps) {
           borderRadius: 4,
         }}
       >
-        <code>{source}</code>
+        <code>{displayed}</code>
       </pre>
     </div>
   )
