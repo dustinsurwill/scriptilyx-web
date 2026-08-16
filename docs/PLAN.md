@@ -5,13 +5,21 @@
 
 ## Status
 
+**Milestone 4 — Codegen is feature-complete (PR #4, branch `codegen-engine`,
+awaiting review/merge).** All 345 node types now have real emitters (no TODO
+stubs); see `docs/codegen-api-notes.md` for the SE ModAPI research behind the
+`ExtendedBuiltin` emitters.
+
 - [x] Milestone 1 — Repo/pipeline skeleton (merged in #1)
 - [x] Milestone 2 — Data layer (merged in #2)
-- [x] Milestone 3 — Canvas (#3)
-- [ ] Milestone 4 — Codegen
+- [x] Milestone 3 — Canvas (merged in #3)
+- [x] Milestone 4 — Codegen (#4, open)
 - [ ] Milestone 5 — Minify
 - [ ] Milestone 6 — Persistence
-- [ ] Milestone 7 — Stretch (node packs, wizards)
+- [ ] Milestone 7.1 — Stretch: node packs, wizards
+- [ ] Milestone 7.2 — Stretch: cleaned-up native node catalog + `.segraph` import
+- [ ] Milestone 7.3 — Stretch: `.segraph` export (legacy-compatible), may end
+      up documented-only
 
 ## Context
 
@@ -161,9 +169,65 @@ unminified sizes.
    live graph state.
 5. **Minify** — toggle + size meter.
 6. **Persistence** — autosave, save/open/export/copy, undo/redo.
-7. **Stretch (later)** — node pack import/management UI, conveyor sorter
-   item picker, Beginner/Advanced/Unified "wizard" scenario templates
-   (pre-built graphs — portable as data once the core editor works).
+7. **Stretch (later)**:
+   - 7.1. **Node pack import/management UI, conveyor sorter item picker,
+     Beginner/Advanced/Unified "wizard" scenario templates** (pre-built
+     graphs — portable as data once the core editor works).
+   - 7.2. **Cleaned-up native node catalog + `.segraph` import** — see
+     "Native catalog cleanup" below. Ships a de-duplicated node set (one
+     `SetEnabled`-style node per behavior instead of one per block-type
+     ActionType, `Above|Below`-style combos instead of paired nodes, a
+     general-purpose `Number Compare` with a full operator set) as the
+     app's own format, plus an importer that reads a legacy
+     Scriptilyx SE `.segraph` and remaps it onto the new catalog — mostly
+     a 1:1 id/property relabel, with true graph-rewrites (inserting
+     nodes/wires) reserved for the rare legacy node with no merged
+     equivalent left in the cleaned catalog.
+   - 7.3. **`.segraph` export (legacy-compatible)** — round-trip a graph
+     built on the cleaned-up catalog back out to a file the original
+     desktop app can open. Likely lossy/best-effort for nodes that
+     collapsed many-to-one on import (e.g. which block-type flavor of
+     `SetEnabled` to re-emit) — **may end up documented-but-not-shipped**
+     rather than implemented; write up the mapping and its gaps either
+     way so the decision is captured even if this sub-milestone stops at
+     the design doc.
+
+### Native catalog cleanup (context for 7.2/7.3)
+
+`NodeLibrary.json` is ChaosVROne's own published data, reused verbatim
+(credited in `src/data/README.md`); the fragmentation below is inherited
+from it, not introduced by this project. Decisions on **how** to fix it are
+being made now so the design doc in 7.2 doesn't drift from what actually
+shipped in Milestone 2's data layer:
+
+- **Cross-category duplication**: `SetBlockEnabled`, `SetSensorEnabled`,
+  `SetHingeEnabled`, `SetRotorEnabled`, `SetMergeBlockEnabled`, etc. are
+  distinct `ActionType`s that all compile to the identical `block.Enabled =
+  value` — collapse to one `ActionType`, one emitter, keep (or merge) the
+  discoverable per-context palette entries pointing at it.
+- **Missing comparison operators**: no `>=`, `<=`, or `!=` exists anywhere
+  in the library. Add a general `Number Compare` node with a full operator
+  combo, replacing `If Number Greater/Less Than`.
+- **Above/Below pairs**: Battery, Gas Tank, Cargo, Room Oxygen, Ship Speed,
+  Jump Drive Charge, and Piston Position each ship as two nodes differing
+  only in comparison direction — collapse each pair into one node with an
+  `Above|Below` combo (same pattern as the existing `Enabled` combo).
+- **Preset-only duplicates**: `Button Command: dock/mine/startup` share the
+  exact `ActionType`/property shape as plain `Button Command`, differing
+  only in the `Argument` default — fold into one node; keep the presets (if
+  wanted) as palette quick-add shortcuts that don't need separate catalog
+  entries.
+- **Fused vs. composable duplication**: some measurements (e.g. battery
+  charge) ship both as a fused check (`Battery Below %`) *and* as a
+  composable primitive (`Get Battery Charge %` + a comparison) that does
+  the same thing. Keep the fused, single-node form as the canonical path
+  for simple threshold checks — per the `Above|Below` merge above, one
+  node beats two wired together for the common case — and keep `Get X %`
+  around only for cases that need the raw value for something else (LCD
+  display, custom math). Importing a legacy fused-check node is then a
+  1:1 relabel onto the merged node, not a graph rewrite; a rewrite is
+  only needed for legacy nodes that have no fused equivalent at all in
+  the cleaned catalog.
 
 ## Workflow
 
