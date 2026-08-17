@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { NodeDefinition, ScriptNode } from '../types/graph'
 import { useGraphStore } from '../store/graphStore'
 import { buildVariableRegistry, type VarKind, type VariableRegistry } from '../lib/variableRegistry'
+import { ItemPicker } from './ItemPicker'
 
 const ALL_KINDS: VarKind[] = ['num', 'text', 'bool']
 
@@ -23,6 +24,24 @@ const PROPERTY_HELP: Record<string, string> = {
   'ext.lcd.group_append:Text': 'Insert a variable’s value with {name}. See the Echo node for details.',
   'var.calculate:Formula':
     'Number-variable names and arithmetic only: + - * / ( ). Supported functions: sqrt, abs, min, max, floor, ceil, round, sin, cos, tan, pow. Example: "a + sqrt(b) * 2".',
+  'sorter.add_item:ItemId': 'The game only shows item names like "Iron Ore" — use Pick Item ID to look it up.',
+  'sorter.remove_item:ItemId': 'The game only shows item names like "Iron Ore" — use Pick Item ID to look it up.',
+  'sorter.if_allows_item:ItemId': 'The game only shows item names like "Iron Ore" — use Pick Item ID to look it up.',
+  'ext.inventory.contains_item:ItemType':
+    'The game only shows item names like "Iron Ore" — use Pick Item ID to look it up.',
+  'ext.inventory.get_item_amount:ItemType':
+    'The game only shows item names like "Iron Ore" — use Pick Item ID to look it up.',
+  'ext.inventory.if_item_below:ItemType':
+    'The game only shows item names like "Iron Ore" — use Pick Item ID to look it up.',
+}
+
+/** ItemId/ItemType fields (conveyor sorter filters, inventory checks) hold
+ * a MyObjectBuilder_TypeId/SubtypeId string a player never sees in-game —
+ * see src/data/inventoryItems.ts. Checked by property key alone: these are
+ * the only two property names used for this shape anywhere in the node
+ * library (verified against NodeLibrary.json). */
+function isItemIdField(key: string): boolean {
+  return key === 'ItemId' || key === 'ItemType'
 }
 
 /** True for a value like "{myFlag}" or "{bool:myFlag}" — a whole-value
@@ -137,7 +156,18 @@ export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
             {help && (
               <div style={{ marginBottom: 4, fontSize: 11, opacity: 0.65, lineHeight: 1.4 }}>{help}</div>
             )}
-            {type === 'multiline' || (type === 'text' && help) ? (
+            {isItemIdField(key) ? (
+              <div style={{ display: 'flex', gap: 4 }}>
+                <input
+                  type="text"
+                  value={value}
+                  onFocus={checkpoint}
+                  onChange={(e) => updateNodeProperty(scriptNode.Id, key, e.target.value)}
+                  style={{ width: '100%', boxSizing: 'border-box' }}
+                />
+                <ItemPicker onPick={(id) => updateNodeProperty(scriptNode.Id, key, id)} />
+              </div>
+            ) : type === 'multiline' || (type === 'text' && help) ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {type === 'multiline' ? (
                   <textarea
