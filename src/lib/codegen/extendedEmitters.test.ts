@@ -16,6 +16,18 @@ describe('extendedEmitters coverage', () => {
   })
 })
 
+describe('ext.cargo.group_threshold', () => {
+  it('sums used/max volume across the group and compares against the threshold, respecting Direction', () => {
+    const above = emit('ext.cargo.group_threshold', { GroupName: 'Cargo Group', Direction: 'Above', Percent: '90' })
+    expect(expressionOf(above.emit)).toBe('(max > 0 ? used / max * 100.0 : 0) > 90d')
+    expect(statementsOf(above.emit).join('\n')).toContain('GetGroupBlocks("Cargo Group")')
+    expect(statementsOf(above.emit).join('\n')).toContain('is IMyCargoContainer c')
+
+    const below = emit('ext.cargo.group_threshold', { GroupName: 'Cargo Group', Direction: 'Below', Percent: '10' })
+    expect(expressionOf(below.emit)).toBe('(max > 0 ? used / max * 100.0 : 0) < 10d')
+  })
+})
+
 describe('ext.bool.if (merged If Bool Variable True/False)', () => {
   it('switches negation on Value', () => {
     const t = emit('ext.bool.if', { Name: 'flag', Value: 'True' })

@@ -68,12 +68,26 @@ export function WizardModal({
         {wizard.parameters.map((param) => (
           <label key={param.id} style={{ display: 'block', marginBottom: 10, fontSize: 12 }}>
             <div style={{ marginBottom: 4, opacity: 0.85 }}>{param.label}</div>
-            <input
-              type={param.type === 'number' ? 'number' : 'text'}
-              value={values[param.id]}
-              onChange={(e) => setValues((prev) => ({ ...prev, [param.id]: e.target.value }))}
-              style={{ width: '100%', boxSizing: 'border-box' }}
-            />
+            {param.type === 'combo' ? (
+              <select
+                value={values[param.id]}
+                onChange={(e) => setValues((prev) => ({ ...prev, [param.id]: e.target.value }))}
+                style={{ width: '100%', boxSizing: 'border-box' }}
+              >
+                {param.options?.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type={param.type === 'number' ? 'number' : 'text'}
+                value={values[param.id]}
+                onChange={(e) => setValues((prev) => ({ ...prev, [param.id]: e.target.value }))}
+                style={{ width: '100%', boxSizing: 'border-box' }}
+              />
+            )}
           </label>
         ))}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
