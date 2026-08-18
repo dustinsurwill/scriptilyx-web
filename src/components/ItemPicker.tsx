@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { inventoryItems } from '../data/inventoryItems'
+import type { GameItem } from '../types/game'
 
 const buttonStyle: CSSProperties = {
   fontSize: 12,
@@ -23,7 +23,7 @@ const buttonStyle: CSSProperties = {
  * name and inserts the id on pick. The field stays plain free text
  * underneath — this is a convenience, not a closed dropdown, since the
  * curated list isn't exhaustive and can't know about modded items. */
-export function ItemPicker({ onPick }: { onPick: (id: string) => void }) {
+export function ItemPicker({ items, onPick }: { items: GameItem[]; onPick: (id: string) => void }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
@@ -42,15 +42,15 @@ export function ItemPicker({ onPick }: { onPick: (id: string) => void }) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     const matches = q
-      ? inventoryItems.filter((i) => i.name.toLowerCase().includes(q) || i.id.toLowerCase().includes(q))
-      : inventoryItems
-    const byCategory = new Map<string, typeof inventoryItems>()
+      ? items.filter((i) => i.name.toLowerCase().includes(q) || i.id.toLowerCase().includes(q))
+      : items
+    const byCategory = new Map<string, GameItem[]>()
     for (const item of matches) {
       if (!byCategory.has(item.category)) byCategory.set(item.category, [])
       byCategory.get(item.category)!.push(item)
     }
     return byCategory
-  }, [query])
+  }, [items, query])
 
   return (
     <div ref={containerRef} style={{ position: 'relative' }}>

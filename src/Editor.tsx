@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
+import { Navigate, useParams } from 'react-router-dom'
 import { ReactFlowProvider } from '@xyflow/react'
-import { nodeDefinitions } from './data/nodeLibrary'
+import { getGame } from './games/registry'
 import { NodePalette } from './components/NodePalette'
 import { GraphCanvas } from './components/GraphCanvas'
 import { PropertyPanel } from './components/PropertyPanel'
@@ -8,21 +9,24 @@ import { ValidationPanel } from './components/ValidationPanel'
 import { ScriptPreview } from './components/ScriptPreview'
 import { ResizeHandle } from './components/ResizeHandle'
 import { Toolbar } from './components/Toolbar'
-import { useGraphStore } from './store/graphStore'
+import { GraphStoreProvider } from './store/GraphStoreProvider'
+import { useGraphStore, useGraphStoreApi } from './store/graphStoreContext'
 import { getGraphIssues } from './lib/graphIssues'
 import { useDragResize } from './hooks/useDragResize'
+import type { Game } from './types/game'
 
 /** Ctrl/Cmd+Z and Ctrl/Cmd+Y (or Shift+Z) drive graph undo/redo — but only
  * when focus isn't inside a text field, where the browser's own native
  * undo for that field should win instead. */
 function useUndoRedoShortcuts() {
+  const storeApi = useGraphStoreApi()
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const ctrlOrCmd = e.ctrlKey || e.metaKey
       if (!ctrlOrCmd || e.key.toLowerCase() !== 'z' && e.key.toLowerCase() !== 'y') return
       const tag = (document.activeElement?.tagName ?? '').toLowerCase()
       if (tag === 'input' || tag === 'textarea' || tag === 'select') return
-      const { undo, redo } = useGraphStore.getState()
+      const { undo, redo } = storeApi.getState()
       if (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey)) {
         e.preventDefault()
         redo()
@@ -33,28 +37,26 @@ function useUndoRedoShortcuts() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [storeApi])
 }
 
-const definitionsById = new Map(nodeDefinitions.map((d) => [d.Id, d]))
+function EditorShell({ game }: { game: Game }) {
+  const definitionsById = useMemo(() => new Map(game.nodeDefinitions.map((d) => [d.Id, d])), [game])
 
-function App() {
   const nodes = useGraphStore((s) => s.nodes)
   const connections = useGraphStore((s) => s.connections)
   const selection = useGraphStore((s) => s.selection)
   const addNode = useGraphStore((s) => s.addNode)
 
   const selectedNode = nodes.find((n) => n.Id === selection.nodeId)
-  const selectedDefinition = selectedNode
-    ? definitionsById.get(selectedNode.DefinitionId)
-    : undefined
+  const selectedDefinition = selectedNode ? definitionsById.get(selectedNode.DefinitionId) : undefined
 
   const issues = useMemo(
     () => getGraphIssues({ nodes, connections, definitionsById }),
-    [nodes, connections],
+    [nodes, connections, definitionsById],
   )
 
-  const handleAddNode = (definition: (typeof nodeDefinitions)[number]) => {
+  const handleAddNode = (definition: (typeof game.nodeDefinitions)[number]) => {
     const columns = 4
     const x = 60 + (nodes.length % columns) * 260
     const y = 60 + Math.floor(nodes.length / columns) * 200
@@ -70,17 +72,17 @@ function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', minWidth: 0 }}>
-      <Toolbar />
+      <Toolbar game={game} />
       <div style={{ display: 'flex', flex: '1 1 auto', minHeight: 0 }}>
         <div style={{ width: leftWidth, flex: '0 0 auto', borderRight: '1px solid #374151', minHeight: 0 }}>
-          <NodePalette nodeDefinitions={nodeDefinitions} onAddNode={handleAddNode} />
+          <NodePalette nodeDefinitions={game.nodeDefinitions} onAddNode={handleAddNode} title={game.label} />
         </div>
 
         <ResizeHandle axis="x" onMouseDown={onLeftHandleDown} />
 
         <div style={{ flex: '1 1 auto', minWidth: 0 }}>
           <ReactFlowProvider>
-            <GraphCanvas />
+            <GraphCanvas definitionsById={definitionsById} />
           </ReactFlowProvider>
         </div>
 
@@ -97,7 +99,7 @@ function App() {
           }}
         >
           <div style={{ height: propertyHeight, flex: '0 0 auto', borderBottom: '1px solid #374151', minHeight: 0 }}>
-            <PropertyPanel scriptNode={selectedNode} definition={selectedDefinition} />
+            <PropertyPanel scriptNode={selectedNode} definition={selectedDefinition} itemList={game.itemList} />
           </div>
           <ResizeHandle axis="y" onMouseDown={onPropertyHandleDown} />
           <div style={{ height: validationHeight, flex: '0 0 auto', borderBottom: '1px solid #374151', minHeight: 0 }}>
@@ -105,7 +107,7 @@ function App() {
           </div>
           <ResizeHandle axis="y" onMouseDown={onValidationHandleDown} />
           <div style={{ flex: '1 1 auto', minHeight: 0 }}>
-            <ScriptPreview />
+            <ScriptPreview game={game} />
           </div>
         </div>
       </div>
@@ -113,4 +115,18 @@ function App() {
   )
 }
 
-export default App
+/** Reads `:gameId` from the route, resolves it against the game registry,
+ * and mounts one isolated graph-store session for it. Redirects to the
+ * landing page for an unknown id instead of rendering a broken editor. */
+export function Editor() {
+  const { gameId } = useParams()
+  const game = gameId ? getGame(gameId) : undefined
+
+  if (!game) return <Navigate to="/" replace />
+
+  return (
+    <GraphStoreProvider game={game} key={game.id}>
+      <EditorShell game={game} />
+    </GraphStoreProvider>
+  )
+}

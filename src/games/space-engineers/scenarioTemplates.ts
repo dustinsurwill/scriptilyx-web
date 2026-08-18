@@ -1,5 +1,5 @@
-import type { NodeDefinition, GraphSaveData } from '../types/graph'
-import { assembleGraph, type RefEdge, type RefNode } from './graphAssembly'
+import type { NodeDefinition, GraphSaveData } from '../../types/graph'
+import { assembleGraph, type RefEdge, type RefNode } from '../../lib/graphAssembly'
 
 export interface ScenarioTemplate {
   id: string

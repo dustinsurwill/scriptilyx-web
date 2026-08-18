@@ -1,5 +1,5 @@
-import type { GraphSaveData, NodeDefinition } from '../types/graph'
-import { assembleGraph, type RefEdge, type RefNode } from './graphAssembly'
+import type { GraphSaveData, NodeDefinition } from '../../types/graph'
+import { assembleGraph, type RefEdge, type RefNode } from '../../lib/graphAssembly'
 
 /** Practical, ready-to-use scripts an average player would actually want,
  * collected through a short form (see WizardModal.tsx) rather than loaded

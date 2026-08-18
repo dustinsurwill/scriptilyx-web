@@ -1,4 +1,4 @@
-import type { ScriptNode } from '../../types/graph'
+import type { ScriptNode } from '../../../types/graph'
 import { boolLiteral, numberLiteral, stringLiteral } from './format'
 import {
   blockCondition,
@@ -19,7 +19,7 @@ import {
 } from './factories'
 import type { NodeEmitter } from './types'
 
-// Every ExtendedBuiltin node id -> emitter. See docs/codegen-api-notes.md for
+// Every ExtendedBuiltin node id -> emitter. See docs/space-engineers-codegen-api-notes.md for
 // the API research this is built against.
 
 function setVar(kind: 'num' | 'text' | 'bool', varKey: string, valueExpr: (node: ScriptNode) => string): NodeEmitter {
@@ -507,7 +507,7 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
   'ext.gear.unlock': blockMethodCall('IMyLandingGear', 'Unlock'),
   'ext.gear.if_locked': blockCondition('IMyLandingGear', (v) => `${v}.IsLocked`),
   // No scriptable "ready to lock" flag exists; approximated as "not locked
-  // but something is in range to attach to" — see docs/codegen-api-notes.md.
+  // but something is in range to attach to" — see docs/space-engineers-codegen-api-notes.md.
   'ext.gear.if_ready': blockCondition('IMyLandingGear', (v) => `!${v}.IsLocked && ${v}.GetAttachedEntity() != null`),
   'ext.gear.group_lock': groupMethodCall('IMyLandingGear', 'Lock'),
   'ext.gear.group_unlock': groupMethodCall('IMyLandingGear', 'Unlock'),

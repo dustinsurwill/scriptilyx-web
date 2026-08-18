@@ -1,4 +1,4 @@
-import type { ScriptNode } from '../../types/graph'
+import type { ScriptNode } from '../../../types/graph'
 import { interpolatedTextExpr, resolvableNumber } from './factories'
 import { sanitizeIdentifier, stringLiteral } from './format'
 import type { NodeEmitter } from './types'

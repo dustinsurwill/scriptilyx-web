@@ -1,6 +1,6 @@
 // Node database reused from Scriptilyx SE (ChaosVROne) — see ./README.md for credit.
 import rawNodeLibrary from './nodeLibrary.json'
-import type { NodeLibrary } from '../types/graph'
+import type { NodeLibrary } from '../../types/graph'
 
 export const nodeLibrary = rawNodeLibrary as NodeLibrary
 

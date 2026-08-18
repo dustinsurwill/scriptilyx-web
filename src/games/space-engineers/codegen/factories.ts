@@ -1,4 +1,4 @@
-import type { ScriptNode } from '../../types/graph'
+import type { ScriptNode } from '../../../types/graph'
 import type { EmitContext, NodeEmitter } from './types'
 import { boolLiteral, hasInterpolation, interpolatedStringLiteral, numberLiteral, stringLiteral } from './format'
 
@@ -273,7 +273,7 @@ export function terminalAction(nameKey = 'BlockName', actionKey = 'ActionId'): N
 
 /** Applies the first terminal action whose Id/Name contains `substring`
  * (case-insensitive) — for blocks whose action id isn't documented anywhere
- * reachable, but whose purpose is unambiguous (see docs/codegen-api-notes.md
+ * reachable, but whose purpose is unambiguous (see docs/space-engineers-codegen-api-notes.md
  * "Action Relay and Broadcast Controller"). */
 export function terminalActionByNameContains(substring: string, nameKey = 'BlockName'): NodeEmitter {
   return (node, ctx) => {

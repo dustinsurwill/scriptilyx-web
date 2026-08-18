@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { remapLegacyGraph } from './legacyImport'
-import type { GraphSaveData, ScriptNode } from '../types/graph'
+import type { GraphSaveData, ScriptNode } from '../../types/graph'
 
 function legacyNode(overrides: Partial<ScriptNode>): ScriptNode {
   return {

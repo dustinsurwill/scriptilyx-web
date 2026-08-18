@@ -1,4 +1,4 @@
-import type { ScriptNode } from '../../types/graph'
+import type { ScriptNode } from '../../../types/graph'
 import { interpolatedTextExpr, resolvableBool, resolvableNumber } from './factories'
 import type { EmitContext, NodeEmitter } from './types'
 import { boolLiteral, numberLiteral, stringLiteral } from './format'
@@ -460,7 +460,7 @@ export const genericEmitters: Record<string, NodeEmitter> = {
     'LcdName',
   ),
   // IMyConveyorSorter.AddItem/RemoveItem/SetFilter/IsAllowed are real,
-  // scriptable methods (see docs/codegen-api-notes.md) — items are matched
+  // scriptable methods (see docs/space-engineers-codegen-api-notes.md) — items are matched
   // by a "TypeId/SubtypeId" string, e.g. "MyObjectBuilder_Ore/Iron".
   SetConveyorSorterFilter: (node, ctx) => {
     ctx.useHelper('GetBlock')
