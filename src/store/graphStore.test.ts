@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { createGraphStore } from './graphStore'
+import { createGraphStore, type OutputCaseConfig } from './graphStore'
 import type { GraphSaveData, NodeDefinition } from '../types/graph'
 
 const useGraphStore = createGraphStore({ autosaveKey: 'test:graph' })
@@ -155,11 +155,23 @@ const SWITCH_DEF: NodeDefinition = {
   Preview: '',
 }
 
-describe('addSwitchCase / removeSwitchCase', () => {
-  it('adds a new CaseN port before Default, with a matching CaseNValue property', () => {
+// Mirrors the Switch entry in PropertyPanel's OUTPUT_CASE_CONFIGS — the
+// store itself has no per-ActionType naming knowledge (see OutputCaseConfig's
+// doc comment in graphStore.ts), so these tests exercise the generic
+// mechanism with a config shaped like a real caller would supply.
+const SWITCH_CASE_CONFIG: OutputCaseConfig = {
+  terminalPort: 'Default',
+  nextPort: (cases) => `Case${cases.length + 1}`,
+  isRemovable: () => true,
+  propertyKey: (port) => `${port}Value`,
+  defaultValue: (port) => port.toLowerCase(),
+}
+
+describe('addOutputCase / removeOutputCase', () => {
+  it('adds a new case port before the terminal port, with a matching match-value property', () => {
     useGraphStore.getState().addNode(SWITCH_DEF, { x: 0, y: 0 })
     const [node] = useGraphStore.getState().nodes
-    useGraphStore.getState().addSwitchCase(node.Id)
+    useGraphStore.getState().addOutputCase(node.Id, SWITCH_CASE_CONFIG)
     const updated = useGraphStore.getState().nodes[0]
     expect(updated.OutputPorts).toEqual(['Case1', 'Case2', 'Case3', 'Default'])
     expect(updated.Properties.Case3Value).toBe('case3')
@@ -171,28 +183,39 @@ describe('addSwitchCase / removeSwitchCase', () => {
     const [switchNode, start] = useGraphStore.getState().nodes
     useGraphStore.getState().connect({ FromNodeId: switchNode.Id, FromPort: 'Case2', ToNodeId: start.Id, ToPort: 'In' })
 
-    useGraphStore.getState().removeSwitchCase(switchNode.Id)
+    useGraphStore.getState().removeOutputCase(switchNode.Id, SWITCH_CASE_CONFIG)
     const updated = useGraphStore.getState().nodes[0]
     expect(updated.OutputPorts).toEqual(['Case1', 'Default'])
     expect(updated.Properties.Case2Value).toBeUndefined()
     expect(useGraphStore.getState().connections).toHaveLength(0)
   })
 
-  it('refuses to remove the last remaining case', () => {
+  it('is a no-op once nothing is removable', () => {
     useGraphStore.getState().addNode(SWITCH_DEF, { x: 0, y: 0 })
     const [node] = useGraphStore.getState().nodes
-    useGraphStore.getState().removeSwitchCase(node.Id)
-    const oneCase = useGraphStore.getState().nodes[0]
-    expect(oneCase.OutputPorts).toEqual(['Case1', 'Default'])
+    useGraphStore.getState().removeOutputCase(node.Id, SWITCH_CASE_CONFIG)
+    useGraphStore.getState().removeOutputCase(node.Id, SWITCH_CASE_CONFIG)
+    expect(useGraphStore.getState().nodes[0].OutputPorts).toEqual(['Default'])
 
-    useGraphStore.getState().removeSwitchCase(oneCase.Id)
+    useGraphStore.getState().removeOutputCase(node.Id, SWITCH_CASE_CONFIG)
+    expect(useGraphStore.getState().nodes[0].OutputPorts).toEqual(['Default'])
+  })
+
+  it('respects a config that keeps some ports fixed/non-removable', () => {
+    useGraphStore.getState().addNode(SWITCH_DEF, { x: 0, y: 0 })
+    const [node] = useGraphStore.getState().nodes
+    const onlyCase2Removable: OutputCaseConfig = { ...SWITCH_CASE_CONFIG, isRemovable: (port) => port === 'Case2' }
+    useGraphStore.getState().removeOutputCase(node.Id, onlyCase2Removable)
+    expect(useGraphStore.getState().nodes[0].OutputPorts).toEqual(['Case1', 'Default'])
+    // Case1 isn't removable under this config, so a second call is a no-op.
+    useGraphStore.getState().removeOutputCase(node.Id, onlyCase2Removable)
     expect(useGraphStore.getState().nodes[0].OutputPorts).toEqual(['Case1', 'Default'])
   })
 
-  it('addSwitchCase/removeSwitchCase are each one undo step', () => {
+  it('addOutputCase/removeOutputCase are each one undo step', () => {
     useGraphStore.getState().addNode(SWITCH_DEF, { x: 0, y: 0 })
     const [node] = useGraphStore.getState().nodes
-    useGraphStore.getState().addSwitchCase(node.Id)
+    useGraphStore.getState().addOutputCase(node.Id, SWITCH_CASE_CONFIG)
     expect(useGraphStore.getState().nodes[0].OutputPorts).toHaveLength(4)
     useGraphStore.getState().undo()
     expect(useGraphStore.getState().nodes[0].OutputPorts).toEqual(['Case1', 'Case2', 'Default'])

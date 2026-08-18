@@ -79,24 +79,46 @@ export const stopScriptEmitter: NodeEmitter = () => ({
   statements: [`Runtime.UpdateFrequency = UpdateFrequency.None;`, `return;`],
 })
 
-const COMMAND_ROUTER_PORTS = [
-  ['StartupArgument', 'startup'],
-  ['ShutdownArgument', 'shutdown'],
-  ['DockArgument', 'dock'],
-  ['UndockArgument', 'undock'],
-  ['MineArgument', 'mine'],
-  ['StopArgument', 'stop'],
-  ['StatusArgument', 'status'],
-  ['OpenAirlockArgument', 'open_airlock'],
-  ['CloseAirlockArgument', 'close_airlock'],
-  ['OpenHangarArgument', 'open_hangar'],
-  ['CloseHangarArgument', 'close_hangar'],
-] as const
+/** Command Router's original fixed case set — still built into every new
+ * instance (see nodeLibrary.json) and never removable, but no longer the
+ * only cases an instance can have; see commandRouterPropertyKey. */
+const COMMAND_ROUTER_BUILTIN_PORTS: Record<string, string> = {
+  startup: 'StartupArgument',
+  shutdown: 'ShutdownArgument',
+  dock: 'DockArgument',
+  undock: 'UndockArgument',
+  mine: 'MineArgument',
+  stop: 'StopArgument',
+  status: 'StatusArgument',
+  open_airlock: 'OpenAirlockArgument',
+  close_airlock: 'CloseAirlockArgument',
+  open_hangar: 'OpenHangarArgument',
+  close_hangar: 'CloseHangarArgument',
+}
 
+/** User-added Command Router cases (via PropertyPanel's "+ Add Case",
+ * src/store/graphStore.ts's addOutputCase) are named `customN`, matched to
+ * a `CustomNArgument` property — distinct from the fixed built-in ports
+ * above, which keep their original semantic names/properties. */
+export function commandRouterPropertyKey(port: string): string {
+  const builtin = COMMAND_ROUTER_BUILTIN_PORTS[port]
+  if (builtin) return builtin
+  const match = /^custom(\d+)$/.exec(port)
+  return match ? `Custom${match[1]}Argument` : `${port}Argument`
+}
+
+/** Routes on `_argument` (the PB's own run argument) to one of however
+ * many cases this node instance has — the original 11 built-in named
+ * commands (see COMMAND_ROUTER_BUILTIN_PORTS) plus any `customN` cases the
+ * user has added. `node.OutputPorts` is the per-instance array (mutated by
+ * the store's addOutputCase/removeOutputCase actions), not the catalog
+ * definition's fixed list, so this loop covers exactly the ports this
+ * instance actually has. */
 export const commandRouterEmitter: NodeEmitter = (node, ctx) => {
   const lines: string[] = ['switch (_argument) {']
-  for (const [propKey, port] of COMMAND_ROUTER_PORTS) {
-    const argument = prop(node, propKey)
+  for (const port of node.OutputPorts) {
+    if (port === 'unknown') continue
+    const argument = prop(node, commandRouterPropertyKey(port))
     if (!argument.trim()) continue
     lines.push(`  case ${stringLiteral(argument)}: ${ctx.next(node, port)} break;`)
   }
@@ -108,12 +130,12 @@ export const commandRouterEmitter: NodeEmitter = (node, ctx) => {
 /** Routes to one of a user-managed number of `CaseN` outputs by matching
  * `Value` against each case's literal (`CaseNValue`), falling through to
  * `Default` if nothing matches — the dynamic-output-count counterpart to
- * `commandRouterEmitter`'s fixed case set. `node.OutputPorts` is the
- * per-instance array (mutated by the store's addSwitchCase/removeSwitchCase
- * actions), not the catalog definition's, so however many cases this
- * particular node instance has is exactly how many `case` labels get
- * emitted — see ScriptGraphNode/PropertyPanel for how the port count is
- * managed on the canvas. */
+ * `commandRouterEmitter`'s originally-fixed case set. `node.OutputPorts` is
+ * the per-instance array (mutated by the store's addOutputCase/
+ * removeOutputCase actions), not the catalog definition's, so however many
+ * cases this particular node instance has is exactly how many `case`
+ * labels get emitted — see ScriptGraphNode/PropertyPanel for how the port
+ * count is managed on the canvas. */
 export const switchEmitter: NodeEmitter = (node, ctx) => {
   const value = resolvableText(node, 'Value', ctx)
   const casePorts = node.OutputPorts.filter((p) => p !== 'Default')
@@ -126,20 +148,29 @@ export const switchEmitter: NodeEmitter = (node, ctx) => {
   return { kind: 'raw', statements: lines }
 }
 
+/** Number Greater Router's `GreaterN`/`ThresholdN` ports were already
+ * plain-numeric (Greater2..Greater6 out of the box), so growing beyond 6
+ * needs no new naming scheme — see numberGreaterRouterCaseConfig, which
+ * lets the same addOutputCase/removeOutputCase mechanism append Greater7,
+ * Greater8, ... beyond the original fixed 5. */
+export function numberGreaterRouterThresholdKey(port: string): string {
+  const n = /^Greater(\d+)$/.exec(port)?.[1] ?? '0'
+  return `Threshold${n}`
+}
+
 export const numberGreaterRouterEmitter: NodeEmitter = (node, ctx) => {
   ctx.useHelper('Vars')
   const name = stringLiteral(prop(node, 'Name'))
-  const thresholds: [string, string][] = [
-    ['Threshold6', 'Greater6'],
-    ['Threshold5', 'Greater5'],
-    ['Threshold4', 'Greater4'],
-    ['Threshold3', 'Greater3'],
-    ['Threshold2', 'Greater2'],
-  ]
+  // Checked highest threshold first so only the highest one a value
+  // actually clears fires, matching the original fixed-order behavior.
+  const greaterPorts = node.OutputPorts
+    .filter((p) => p !== 'Else')
+    .slice()
+    .sort((a, b) => Number(/^Greater(\d+)$/.exec(b)?.[1] ?? 0) - Number(/^Greater(\d+)$/.exec(a)?.[1] ?? 0))
   const lines: string[] = []
   let opened = 0
-  for (const [propKey, port] of thresholds) {
-    const value = prop(node, propKey)
+  for (const port of greaterPorts) {
+    const value = prop(node, numberGreaterRouterThresholdKey(port))
     if (!value.trim()) continue
     lines.push(`if (GetNum(${name}) > ${value}) { ${ctx.next(node, port)} }`)
     lines.push(`else {`)

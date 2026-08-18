@@ -6,6 +6,31 @@ interface Selection {
   connectionId: string | null
 }
 
+/** Describes one "router"-shaped node's output-port naming convention, so
+ * addOutputCase/removeOutputCase can stay generic across Switch, Command
+ * Router, Number Greater Router, and any future node shaped like them —
+ * one input, N user-manageable "case" output ports, one fixed terminal
+ * fallback port that always stays last. Built by the UI (PropertyPanel),
+ * not the store — the store has no per-ActionType knowledge of its own. */
+export interface OutputCaseConfig {
+  /** The fixed fallback output port (Switch's "Default", Command Router's
+   * "unknown", ...) that must always stay last and is never itself
+   * addable/removable. */
+  terminalPort: string
+  /** Given the case ports already present (terminal excluded), returns the
+   * next port name to append. */
+  nextPort: (casePorts: string[]) => string
+  /** True if this case port is one addSwitchCase/removeOutputCase manage —
+   * false for a node's fixed/built-in cases that predate this mechanism
+   * (Command Router's "startup"/"dock"/... , Number Greater Router's
+   * "Greater2".."Greater6") and must never be removed. */
+  isRemovable: (port: string) => boolean
+  /** Property key holding this port's match value/threshold. */
+  propertyKey: (port: string) => string
+  /** Default value for a newly-added port's property. */
+  defaultValue: (port: string) => string
+}
+
 export function connectionId(c: NodeConnection): string {
   return `${c.FromNodeId}::${c.FromPort}->${c.ToNodeId}::${c.ToPort}`
 }
@@ -41,14 +66,19 @@ export interface GraphState {
   addNode: (definition: NodeDefinition, position: { x: number; y: number }) => void
   moveNode: (nodeId: string, position: { x: number; y: number }) => void
   updateNodeProperty: (nodeId: string, key: string, value: string) => void
-  /** Appends one more `CaseN`/`CaseNValue` output port to a Switch node
-   * instance (keeping `Default` last) — see PropertyPanel's "manage cases"
-   * control and switchEmitter in src/games/space-engineers/codegen. */
-  addSwitchCase: (nodeId: string) => void
-  /** Removes the highest-numbered `CaseN` output port from a Switch node
-   * instance (a no-op below one case), dropping its `CaseNValue` property
-   * and any wire connected from that port. */
-  removeSwitchCase: (nodeId: string) => void
+  /** Appends one more output port to a "router"-shaped node instance
+   * (Switch, Command Router, Number Greater Router, ...) ahead of its
+   * fixed terminal/fallback port, plus whatever property that new port's
+   * match value lives under — see PropertyPanel's per-node `OutputCaseConfig`
+   * and the matching emitter in src/games/space-engineers/codegen. The
+   * store knows nothing about any specific node's naming convention; the
+   * caller supplies it. */
+  addOutputCase: (nodeId: string, config: OutputCaseConfig) => void
+  /** Removes the most-recently-added removable output port (per
+   * `config.isRemovable`) from a router-shaped node instance — a no-op if
+   * none are removable — dropping its match-value property and any wire
+   * connected from that port. */
+  removeOutputCase: (nodeId: string, config: OutputCaseConfig) => void
   deleteNode: (nodeId: string) => void
   deleteConnection: (id: string) => void
   connect: (connection: NodeConnection) => void
@@ -182,30 +212,31 @@ export function createGraphStore(options: CreateGraphStoreOptions) {
       }))
     },
 
-    addSwitchCase: (nodeId) => {
+    addOutputCase: (nodeId, config) => {
       get().checkpoint()
       set((state) => ({
         nodes: state.nodes.map((n) => {
           if (n.Id !== nodeId) return n
-          const caseCount = n.OutputPorts.filter((p) => p !== 'Default').length
-          const newPort = `Case${caseCount + 1}`
+          const casePorts = n.OutputPorts.filter((p) => p !== config.terminalPort)
+          const newPort = config.nextPort(casePorts)
           return {
             ...n,
-            OutputPorts: [...n.OutputPorts.filter((p) => p !== 'Default'), newPort, 'Default'],
-            Properties: { ...n.Properties, [`${newPort}Value`]: newPort.toLowerCase() },
+            OutputPorts: [...casePorts, newPort, config.terminalPort],
+            Properties: { ...n.Properties, [config.propertyKey(newPort)]: config.defaultValue(newPort) },
           }
         }),
       }))
     },
 
-    removeSwitchCase: (nodeId) => {
+    removeOutputCase: (nodeId, config) => {
       get().checkpoint()
       set((state) => {
         const node = state.nodes.find((n) => n.Id === nodeId)
-        const cases = node?.OutputPorts.filter((p) => p !== 'Default') ?? []
-        if (!node || cases.length <= 1) return state
-        const lastCase = cases[cases.length - 1]
-        const { [`${lastCase}Value`]: _removed, ...restProperties } = node.Properties
+        const removable = node?.OutputPorts.filter((p) => p !== config.terminalPort && config.isRemovable(p)) ?? []
+        if (!node || removable.length === 0) return state
+        const lastCase = removable[removable.length - 1]
+        const propKey = config.propertyKey(lastCase)
+        const { [propKey]: _removed, ...restProperties } = node.Properties
         return {
           nodes: state.nodes.map((n) =>
             n.Id === nodeId

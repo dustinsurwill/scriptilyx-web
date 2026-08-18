@@ -135,10 +135,16 @@ describe('stopScriptEmitter', () => {
   })
 })
 
+const COMMAND_ROUTER_BUILTIN_OUTPUT_PORTS = [
+  'startup', 'shutdown', 'dock', 'undock', 'mine', 'stop', 'status',
+  'open_airlock', 'close_airlock', 'open_hangar', 'close_hangar', 'unknown',
+]
+
 describe('commandRouterEmitter', () => {
   it('only emits case labels for arguments the user actually configured', () => {
     const node = makeNode({
       ActionType: 'CommandRouter',
+      OutputPorts: COMMAND_ROUTER_BUILTIN_OUTPUT_PORTS,
       Properties: { StartupArgument: 'startup', DockArgument: '' },
     })
     const emit = commandRouterEmitter(node, fakeContext())
@@ -146,6 +152,17 @@ describe('commandRouterEmitter', () => {
     expect(src).toContain('case "startup":')
     expect(src).not.toContain('case "":')
     expect(src).toContain('default:')
+  })
+
+  it('routes a user-added customN case via its CustomNArgument property, not just the built-in 11', () => {
+    const node = makeNode({
+      ActionType: 'CommandRouter',
+      OutputPorts: [...COMMAND_ROUTER_BUILTIN_OUTPUT_PORTS.slice(0, -1), 'custom1', 'unknown'],
+      Properties: { StartupArgument: 'startup', Custom1Argument: 'refuel' },
+    })
+    const emit = commandRouterEmitter(node, fakeContext())
+    const src = statementsOf(emit).join('\n')
+    expect(src).toContain('case "refuel": NEXT(custom1);')
   })
 })
 
@@ -186,10 +203,13 @@ describe('switchEmitter', () => {
   })
 })
 
+const NUMBER_GREATER_ROUTER_BUILTIN_OUTPUT_PORTS = ['Greater2', 'Greater3', 'Greater4', 'Greater5', 'Greater6', 'Else']
+
 describe('numberGreaterRouterEmitter', () => {
   it('builds a nested if/else so only the highest matching threshold fires', () => {
     const node = makeNode({
       ActionType: 'NumberGreaterRouter',
+      OutputPorts: NUMBER_GREATER_ROUTER_BUILTIN_OUTPUT_PORTS,
       Properties: { Name: 'x', Threshold2: '2', Threshold3: '3' },
     })
     const emit = numberGreaterRouterEmitter(node, fakeContext())
@@ -199,11 +219,27 @@ describe('numberGreaterRouterEmitter', () => {
   })
 
   it('skips unset thresholds entirely rather than emitting a broken branch', () => {
-    const node = makeNode({ ActionType: 'NumberGreaterRouter', Properties: { Name: 'x', Threshold4: '4' } })
+    const node = makeNode({
+      ActionType: 'NumberGreaterRouter',
+      OutputPorts: NUMBER_GREATER_ROUTER_BUILTIN_OUTPUT_PORTS,
+      Properties: { Name: 'x', Threshold4: '4' },
+    })
     const emit = numberGreaterRouterEmitter(node, fakeContext())
     const src = statementsOf(emit).join('\n')
     expect(src).not.toContain('> undefined')
     expect(src).toContain('> 4')
+  })
+
+  it('checks a user-added Greater7 (beyond the built-in 2..6) before the lower thresholds', () => {
+    const node = makeNode({
+      ActionType: 'NumberGreaterRouter',
+      OutputPorts: [...NUMBER_GREATER_ROUTER_BUILTIN_OUTPUT_PORTS.slice(0, -1), 'Greater7', 'Else'],
+      Properties: { Name: 'x', Threshold2: '2', Threshold7: '7' },
+    })
+    const emit = numberGreaterRouterEmitter(node, fakeContext())
+    const src = statementsOf(emit).join('\n')
+    expect(src.indexOf('> 7')).toBeLessThan(src.indexOf('> 2'))
+    expect(src).toContain('NEXT(Greater7)')
   })
 })
 
