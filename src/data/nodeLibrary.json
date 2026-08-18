@@ -7350,6 +7350,42 @@
    "Preview": "{BlockName} {Percent} ({Direction})"
   },
   {
+   "Id": "ext.cargo.group_threshold",
+   "Category": "✅ Checks",
+   "Title": "Cargo Group Threshold",
+   "Description": "Checks combined inventory fill percentage across every cargo container in a group against a threshold.",
+   "Search": "cargo group inventory above below percent full threshold",
+   "ActionType": "ExtendedBuiltin",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "True",
+    "False"
+   ],
+   "Properties": {
+    "GroupName": {
+     "Type": "text",
+     "DefaultValue": "Cargo Group",
+     "Options": []
+    },
+    "Direction": {
+     "Type": "combo",
+     "DefaultValue": "Above",
+     "Options": [
+      "Above",
+      "Below"
+     ]
+    },
+    "Percent": {
+     "Type": "number",
+     "DefaultValue": "90",
+     "Options": []
+    }
+   },
+   "Preview": "{GroupName} {Percent} ({Direction})"
+  },
+  {
    "Id": "ext.ship.speed_threshold",
    "Category": "✅ Checks",
    "Title": "Ship Speed Threshold",

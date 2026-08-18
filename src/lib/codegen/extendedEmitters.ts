@@ -243,6 +243,18 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
     'IMyCargoContainer',
     (v) => `(double)${v}.GetInventory(0).CurrentVolume / (double)${v}.GetInventory(0).MaxVolume * 100.0`,
   ),
+  'ext.cargo.group_threshold': (node, ctx) => {
+    ctx.useHelper('GetGroupBlocks')
+    const direction = prop(node, 'Direction') === 'Below' ? '<' : '>'
+    return {
+      kind: 'condition',
+      statements: [
+        `double used = 0, max = 0;`,
+        `foreach (var b in GetGroupBlocks(${stringLiteral(prop(node, 'GroupName'))})) { if (b is IMyCargoContainer c) { used += (double)c.GetInventory(0).CurrentVolume; max += (double)c.GetInventory(0).MaxVolume; } }`,
+      ],
+      expression: `(max > 0 ? used / max * 100.0 : 0) ${direction} ${numberLiteral(prop(node, 'Percent'))}`,
+    }
+  },
 
   // --- Inventory ------------------------------------------------------------
   'ext.inventory.contains_item': (node, ctx) => {

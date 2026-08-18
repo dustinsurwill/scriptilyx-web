@@ -4,6 +4,8 @@ import type { GraphSaveData } from '../types/graph'
 import { useGraphStore } from '../store/graphStore'
 import { useGeneratedScript } from '../hooks/useGeneratedScript'
 import { remapLegacyGraph } from '../lib/legacyImport'
+import { TemplatesMenu } from './TemplatesMenu'
+import { WizardsMenu } from './WizardsMenu'
 
 const SAVE_FILENAME = 'script.segraph'
 
@@ -111,6 +113,8 @@ export function Toolbar() {
       <button style={buttonStyle} onClick={handleOpenClick} title="Load a graph from a .segraph/.json file">
         Open
       </button>
+      <TemplatesMenu />
+      <WizardsMenu />
       <button
         style={nodes.length === 0 && connections.length === 0 ? disabledButtonStyle : buttonStyle}
         onClick={handleClear}

@@ -30,7 +30,8 @@ node).
 - [x] Milestone 4 — Codegen (merged in #4)
 - [x] Milestone 5 — Minify (merged in #5)
 - [x] Milestone 6 — Persistence (merged in #6)
-- [ ] Milestone 7.1 — Stretch: node packs, wizards
+- [ ] Milestone 7.1 — Stretch: templates, wizards, item picker (built on
+      `milestone-7.1-wizards-and-packs`, not yet merged)
 - [x] Milestone 7.2 — Stretch: cleaned-up native node catalog + `.segraph`
       import (merged in #7)
 - [ ] Milestone 7.3 — Stretch: `.segraph` export (legacy-compatible), may end
@@ -100,8 +101,11 @@ rights reserved" by default, not an oversight. Concretely:
   schema, so users' existing desktop-app save files open directly here. Our
   own defensive load-time validation (reject non-finite coordinates, default
   missing fields, clamp zoom), designed independently against the schema.
-- Node packs and the conveyor sorter item database: types ported now, full
-  install/manage UI deferred to the stretch milestone.
+- Conveyor sorter/inventory item picker (item id fields like `ItemId`/
+  `ItemType`): deferred to the stretch milestone — see 7.1 below. (Node
+  pack import/management, previously also slated for 7.1, was dropped:
+  there's no node-pack JSON in hand to build against, so it'd be UI for a
+  format nobody's produced yet.)
 
 ## Canvas / editor (React Flow)
 
@@ -187,9 +191,33 @@ count itself always shown so it's not just a color guess.
 5. **Minify** — toggle + size meter.
 6. **Persistence** — autosave, save/open/export/copy, undo/redo.
 7. **Stretch (later)**:
-   - 7.1. **Node pack import/management UI, conveyor sorter item picker,
-     Beginner/Advanced/Unified "wizard" scenario templates** (pre-built
-     graphs — portable as data once the core editor works).
+   - 7.1. **Templates, Wizards, conveyor sorter/inventory item picker.**
+     Templates (`src/data/scenarioTemplates.ts`,
+     `TemplatesMenu.tsx`) and Wizards (`src/data/wizardTemplates.ts`,
+     `WizardsMenu.tsx`/`WizardModal.tsx`) are deliberately separate
+     systems, not two names for the same feature: Templates are static
+     worked examples that load as-is, picked to show off what the graph
+     editor/codegen can do (multi-way branching, persistence, fan-in/
+     fan-out). Wizards are practical, ready-to-use scripts (Airlock Cycler,
+     Cargo Full Alert, Auto Cockpit Lights) collected through a short modal
+     form first — a handful of parameters (block/group names, timings/
+     thresholds) get substituted into the graph before it's built and
+     wired, so the result needs at most a few tweaks rather than editing
+     every node's placeholder name by hand. Both share only the mechanical
+     ref-addressed-DAG → `GraphSaveData` assembly step (layered layout +
+     node/edge construction) in `src/data/graphAssembly.ts`. The item
+     picker ("Pick Item ID" button in `PropertyPanel`, on `ItemId`/
+     `ItemType` fields) needs a display-name → item-id list (players see
+     "Iron Ore" in-game, never the `MyObjectBuilder_Ore/Iron`-shaped id the
+     property actually takes), hand-built in `src/data/inventoryItems.ts`
+     from public SE block/item-definition references (ores/ingots/base
+     components/bottles/consumables — the categories most stable across
+     game updates) since there's no `ConveyorSorterItems.json`-equivalent
+     in hand to reuse verbatim; the field stays free text underneath so
+     modded items (which reuse the same `TypeId/SubtypeId` shape — see
+     `GetItemAmount` in `src/lib/codegen/helpers.ts`) can still be typed by
+     id. (Node pack import/management UI, previously also slated for 7.1,
+     was dropped — see "Data layer" above.)
    - 7.2. **Cleaned-up native node catalog + `.segraph` import** — see
      "Native catalog cleanup" below. Ships a de-duplicated node set (one
      `SetEnabled`-style node per behavior instead of one per block-type
