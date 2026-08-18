@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { NodeDefinition } from '../types/graph'
 import type { GameWizard } from '../types/game'
-import { useGraphStore } from '../store/GraphStoreContext'
+import { useGraphStore } from '../store/graphStoreContext'
 import { WizardModal } from './WizardModal'
 
 const buttonStyle: CSSProperties = {

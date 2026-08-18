@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { Game } from '../types/game'
-import { useGraphStore } from '../store/GraphStoreContext'
+import { useGraphStore } from '../store/graphStoreContext'
 
 /** Generates the current script from the graph store, honoring the shared
  * Detailed Comments / Minify toggles. Shared by ScriptPreview (which owns

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { NodeDefinition, ScriptNode } from '../types/graph'
-import { useGraphStore } from '../store/GraphStoreContext'
+import { useGraphStore } from '../store/graphStoreContext'
 import { buildVariableRegistry, type VarKind, type VariableRegistry } from '../lib/variableRegistry'
 import { ItemPicker } from './ItemPicker'
 import type { GameItem } from '../types/game'

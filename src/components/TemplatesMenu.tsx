@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { NodeDefinition } from '../types/graph'
 import type { GameTemplate } from '../types/game'
-import { useGraphStore } from '../store/GraphStoreContext'
+import { useGraphStore } from '../store/graphStoreContext'
 
 const buttonStyle: CSSProperties = {
   fontSize: 12,

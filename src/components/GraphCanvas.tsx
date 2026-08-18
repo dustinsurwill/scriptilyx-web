@@ -10,7 +10,7 @@ import {
   type OnEdgesChange,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { useGraphStore } from '../store/GraphStoreContext'
+import { useGraphStore } from '../store/graphStoreContext'
 import { connectionId } from '../store/graphStore'
 import type { NodeDefinition } from '../types/graph'
 import { ScriptGraphNode, type ScriptGraphNodeType } from './ScriptGraphNode'

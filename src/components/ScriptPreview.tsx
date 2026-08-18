@@ -1,4 +1,4 @@
-import { useGraphStore } from '../store/GraphStoreContext'
+import { useGraphStore } from '../store/graphStoreContext'
 import { useGeneratedScript } from '../hooks/useGeneratedScript'
 import type { Game } from '../types/game'
 
