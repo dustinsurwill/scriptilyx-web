@@ -2,14 +2,9 @@ import { useGraphStore } from '../store/graphStoreContext'
 import { useGeneratedScript } from '../hooks/useGeneratedScript'
 import type { Game } from '../types/game'
 
-// The programmable block's terminal rejects scripts over 100,000 chars.
-const PB_CHAR_LIMIT = 100_000
-const AMBER_THRESHOLD = 80_000
-const RED_THRESHOLD = 95_000
-
-function sizeColor(chars: number): string {
-  if (chars > RED_THRESHOLD) return '#ef4444'
-  if (chars > AMBER_THRESHOLD) return '#f59e0b'
+function tierColor(value: number, amberAt: number, redAt: number): string {
+  if (value > redAt) return '#ef4444'
+  if (value > amberAt) return '#f59e0b'
   return '#22c55e'
 }
 
@@ -19,6 +14,9 @@ export function ScriptPreview({ game }: { game: Game }) {
   const minify = useGraphStore((s) => s.minify)
   const setMinify = useGraphStore((s) => s.setMinify)
   const { source, minified, displayed, warnings } = useGeneratedScript(game)
+
+  const lines = source.split('\n')
+  const longestLine = lines.reduce((max, l) => Math.max(max, l.length), 0)
 
   return (
     <div
@@ -44,19 +42,53 @@ export function ScriptPreview({ game }: { game: Game }) {
             />
             Detailed Comments
           </label>
-          <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <input type="checkbox" checked={minify} onChange={(e) => setMinify(e.target.checked)} />
-            Minify
-          </label>
+          {game.minify && (
+            <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <input type="checkbox" checked={minify} onChange={(e) => setMinify(e.target.checked)} />
+              Minify
+            </label>
+          )}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 12, fontSize: 11, margin: '0 0 8px', fontVariantNumeric: 'tabular-nums' }}>
-        <span style={{ color: sizeColor(source.length) }}>
-          Full: {source.length.toLocaleString()} / {PB_CHAR_LIMIT.toLocaleString()} chars
-        </span>
-        <span style={{ color: sizeColor(minified.length) }}>
-          Minified: {minified.length.toLocaleString()} / {PB_CHAR_LIMIT.toLocaleString()} chars
-        </span>
+        {game.charLimit && (
+          <>
+            <span style={{ color: tierColor(source.length, game.charLimit.amberAt, game.charLimit.redAt) }}>
+              Full: {source.length.toLocaleString()} / {game.charLimit.max.toLocaleString()} chars
+            </span>
+            {game.minify && (
+              <span style={{ color: tierColor(minified.length, game.charLimit.amberAt, game.charLimit.redAt) }}>
+                Minified: {minified.length.toLocaleString()} / {game.charLimit.max.toLocaleString()} chars
+              </span>
+            )}
+          </>
+        )}
+        {game.lineLimit && (
+          <>
+            <span
+              style={{
+                color: tierColor(
+                  lines.length,
+                  Math.floor(game.lineLimit.maxLines * 0.9),
+                  game.lineLimit.maxLines,
+                ),
+              }}
+            >
+              Lines: {lines.length} / {game.lineLimit.maxLines}
+            </span>
+            <span
+              style={{
+                color: tierColor(
+                  longestLine,
+                  Math.floor(game.lineLimit.maxLineLength * 0.9),
+                  game.lineLimit.maxLineLength,
+                ),
+              }}
+            >
+              Longest line: {longestLine} / {game.lineLimit.maxLineLength} chars
+            </span>
+          </>
+        )}
       </div>
       {warnings.length > 0 && (
         <ul style={{ listStyle: 'none', margin: '0 0 8px', padding: 0 }}>

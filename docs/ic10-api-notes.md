@@ -1,0 +1,31 @@
+# Stationeers IC10 — codegen reference notes
+
+Working notes gathered while implementing `src/games/ic10/codegen/generate.ts` and `src/games/ic10/nodeLibrary.ts`. This is our own summary of publicly documented instruction-set/behavior facts (the kind of thing any programmer would note while reading IC10 docs) — not a copy of any wiki's prose, and not derived from any third-party tool's source. See `CLAUDE.md` → "Hard constraints" for why that distinction matters here; the Space Engineers equivalent of this file is `docs/space-engineers-codegen-api-notes.md`.
+
+Sources: the Stationeers Community Wiki's IC10 and IC10/instructions pages (https://stationeers-wiki.com/IC10, https://stationeers-wiki.com/IC10/instructions), its Advanced IC10 Programming page, and a beginner's-guide writeup at https://xgamingserver.com/blog/stationeers-ic10-programming-guide/ — cross-referenced against each other for the facts below. Device-specific LogicType availability is explicitly *not* something any wiki fully enumerates; the wikis themselves point to the in-game Stationpedia as the authoritative per-device reference, which is why `ic10.device.read`/`ic10.device.write`'s `LogicType` property is free text rather than a closed combo (unlike Space Engineers' `ItemId`, there's no stable, version-independent list to bake in here).
+
+## Program size and execution model
+
+- **Static size cap**: 128 lines maximum, 90 characters per line maximum. This is a hard limit on what fits in the in-game IC10 editor — exceeding it means the script can't be pasted in at all, not just a performance concern. `generateScript` checks both and returns a warning (surfaced in `ScriptPreview` via `Game.lineLimit`) rather than silently truncating.
+- **Runtime model**: the chip's instruction pointer persists across game ticks — it does *not* restart from line 0 every tick the way Space Engineers' `Main()` is re-invoked each tick. Execution just continues from wherever it stopped: either at a `sleep`/`yield` instruction, or after executing up to 128 instructions in one tick (an unrelated budget from the 128-line static cap — this one throttles *execution*, not *program length*), at which point it auto-pauses for one tick and resumes next tick from that exact point.
+- Practical effect on our codegen: because the pointer just continues, a program with no `sleep`/`yield` anywhere doesn't hang — the engine's own per-tick instruction budget throttles it automatically — but it does mean "every branch always ends in an explicit jump" is the only safe way to compile a graph with no implicit fallthrough-to-next-line assumption, since nothing here resembles a call stack that returns anywhere.
+
+## Registers, devices, and labels
+
+- 16 general-purpose registers, `r0`-`r15`, plus two reserved special registers: `sp` (stack pointer) and `ra` (return address, set by `jal`). Our register allocator (`allocateRegisters` in `generate.ts`) only ever assigns `r0`-`r15`, in first-declared order among reachable nodes, and warns if a graph declares more than 16 distinct variable names — the 17th onward simply won't get an alias.
+- Device pins are `d0`-`d5` (six physical connector slots on the IC housing) plus `db` (the housing's own logic-type reads, e.g. reading the IC housing's own `On`/`Setting`). These are fixed slots, not player-named — unlike Space Engineers' `BlockName` free-text field, there's no name to type; the `Device` property on our Read/Write nodes is a closed combo over exactly these seven values.
+- **Labels are a real, natively-supported feature** — not just an external-tool convenience. Wherever an instruction expects a jump target, you can write a label name instead of a raw line number, and the in-game assembler resolves it. This is why our codegen emits `L<Number>:` labels per node and `j L<target>` jumps rather than trying to precompute absolute line numbers ourselves — much simpler and exactly mirrors how real IC10 scripts are written by hand.
+- **`alias`** assigns a readable name to a register (`alias temp r0`) or a device pin. We use this for every declared variable name so the emitted code reads `l temp d0 Temperature` instead of `l r0 d0 Temperature` — readability parity with how a human would write it, and with how Space Engineers' generated method/variable names aim to stay readable.
+- One label-naming pitfall documented on the wiki: naming a label (or, by extension, an alias) after an IC10 keyword — a LogicType name like `Temperature` or `Setting`, say — silently overwrites that keyword's meaning from that point on. Our codegen doesn't defend against this (no exhaustive LogicType keyword list exists to check against — see above); it's called out here and would be a reasonable thing to add narrow validation for later if it turns out to bite real users (e.g. warn if a declared variable name case-insensitively matches a LogicType typed into a `LogicType` field elsewhere in the same graph).
+
+## Instructions used by the current node catalog
+
+- `l <register> <device> <LogicType>` — read (`ic10.device.read`).
+- `s <device> <LogicType> <value>` — write (`ic10.device.write`).
+- `move <register> <value>` — assign a literal or another register's value (`ic10.var.set`).
+- `add`/`sub`/`mul`/`div`/`mod`/`min`/`max` (binary) and `round`/`floor`/`ceil`/`abs`/`sqrt` (unary) — arithmetic (`ic10.var.math`, one `Operator` combo covering all of them, mirroring Space Engineers' `Number Math` generic-operator node).
+- `beq`/`bne`/`blt`/`ble`/`bgt`/`bge <a> <b> <label>` — branch-if-true, immediately followed by an unconditional `j <falseLabel>` for the False path (`ic10.compare`).
+- `sleep <seconds>` / `yield` — pacing (`ic10.sleep`/`ic10.yield`).
+- `j <label>` — unconditional jump, used both for normal Next-port control flow and for the explicit `ic10.loop_to_start` node.
+
+Not used by anything in the current catalog, and not implemented: `jal`/`ra`-based subroutine calls (no node needs a "return to caller" shape — every node's control flow is a plain forward/backward jump), the stack (`push`/`pop`/`peek`), and `hcf` (deliberately excluded — it's a destructive "halt and catch fire" instruction with real in-game consequences for the chip, not a good fit for a node a user could wire in by accident).
