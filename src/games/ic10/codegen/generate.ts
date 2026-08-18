@@ -1,6 +1,7 @@
 import type { NodeConnection, ScriptNode } from '../../../types/graph'
 import type { GenerateOptions, GenerateResult } from '../../../types/game'
 import { findStartNodes, getReachableNodeIds } from '../../../lib/graph'
+import { prefabHashFor } from '../deviceLogicTypes'
 
 const MAX_LINES = 128
 const MAX_LINE_LENGTH = 90
@@ -13,6 +14,14 @@ const RESERVED_NAMES = new Set([
   'd0', 'd1', 'd2', 'd3', 'd4', 'd5', 'db',
 ])
 
+/** ActionTypes whose `Name` property declares a new register-backed
+ * variable (see allocateRegisters). */
+const DECLARING_ACTION_TYPES = new Set([
+  'ReadDevice', 'ReadDeviceById', 'SetNumber', 'NumberMath', 'Select',
+  'DeviceConnectedValue', 'ReadDeviceReagent', 'ReagentItemHash',
+  'BatchReadDevice', 'BatchReadDeviceSlot', 'Pop', 'Peek', 'GetStack', 'GetStackById',
+])
+
 function label(node: ScriptNode): string {
   return `L${node.Number}`
 }
@@ -21,26 +30,60 @@ function isNumeric(raw: string): boolean {
   return raw.trim() !== '' && Number.isFinite(Number(raw.trim()))
 }
 
-const MATH_OPCODE: Record<string, string> = {
-  Add: 'add', Subtract: 'sub', Multiply: 'mul', Divide: 'div', Modulo: 'mod',
-  Min: 'min', Max: 'max', Round: 'round', Floor: 'floor', Ceil: 'ceil', Abs: 'abs', Sqrt: 'sqrt',
+function stringLiteral(raw: string): string {
+  return `"${raw.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
 }
-const UNARY_MATH_OPS = new Set(['Round', 'Floor', 'Ceil', 'Abs', 'Sqrt'])
 
-const BRANCH_OPCODE: Record<string, string> = {
+/** IC10's compile-time `HASH("name")` expression, for the batch/reagent
+ * instructions that address a prefab or reagent by name rather than by a
+ * literal hash number we'd otherwise have to look up ourselves. */
+function hashExpr(name: string): string {
+  return name ? `HASH(${stringLiteral(name)})` : '0'
+}
+
+const BATCH_MODE_NUM: Record<string, number> = { Average: 0, Sum: 1, Minimum: 2, Maximum: 3 }
+const REAGENT_MODE_NUM: Record<string, number> = { Contents: 0, Required: 1, Recipe: 2 }
+
+// Number Math: one node, ~50 instructions worth of operators — grouped by
+// operand count (arity), each mapped to its real IC10 mnemonic.
+const NUMBER_MATH_OPCODE: Record<string, string> = {
+  Add: 'add', Subtract: 'sub', Multiply: 'mul', Divide: 'div', Modulo: 'mod', Min: 'min', Max: 'max',
+  Round: 'round', Floor: 'floor', Ceil: 'ceil', Abs: 'abs', Sqrt: 'sqrt', Trunc: 'trunc', Sgn: 'sgn',
+  Sin: 'sin', Cos: 'cos', Tan: 'tan', Asin: 'asin', Acos: 'acos', Atan: 'atan', Atan2: 'atan2',
+  Exp: 'exp', Log: 'log', Pow: 'pow',
+  And: 'and', Or: 'or', Xor: 'xor', Nor: 'nor', Not: 'not',
+  RotateLeft: 'rol', RotateRight: 'ror',
+  ShiftLeftArithmetic: 'sla', ShiftLeftLogical: 'sll', ShiftRightArithmetic: 'sra', ShiftRightLogical: 'srl',
+  Equal: 'seq', NotEqual: 'sne', LessThan: 'slt', LessOrEqual: 'sle', GreaterThan: 'sgt', GreaterOrEqual: 'sge',
+  ApproxEqual: 'sap', NotApproxEqual: 'sna', IsNaN: 'snan', IsNotNaN: 'snanz',
+  Clamp: 'clamp', Lerp: 'lerp', ExtractBits: 'ext', InsertBits: 'ins', Random: 'rand',
+}
+const NULLARY_MATH_OPS = new Set(['Random'])
+const UNARY_MATH_OPS = new Set([
+  'Round', 'Floor', 'Ceil', 'Abs', 'Sqrt', 'Trunc', 'Sgn',
+  'Sin', 'Cos', 'Tan', 'Asin', 'Acos', 'Atan', 'Exp', 'Log', 'Not', 'IsNaN', 'IsNotNaN',
+])
+const TERNARY_MATH_OPS = new Set(['Clamp', 'Lerp', 'ApproxEqual', 'NotApproxEqual', 'ExtractBits', 'InsertBits'])
+
+// Compare: base two-operand branch mnemonics. IC10 also has zero-compare
+// ("z") and call-and-link ("al") variants of each of these — rather than
+// separate nodes, generateScript picks the shorter mnemonic automatically
+// (see the Compare case below) since the string concatenation happens to
+// match IC10's actual naming (beq + z + al = "beqzal", a real mnemonic).
+const COMPARE_BASE_OPCODE: Record<string, string> = {
   Equal: 'beq', NotEqual: 'bne', LessThan: 'blt', LessOrEqual: 'ble', GreaterThan: 'bgt', GreaterOrEqual: 'bge',
 }
 
-/** Collects every name a node declares via its `Name` property (Read
- * Device, Set Number, Number Math), in first-appearance order among
- * reachable nodes, and assigns each one a general-purpose register
- * (r0-r15 — only 16 exist, `sp`/`ra` are reserved). Returns the alias
- * lines to emit plus a lookup of which names actually got a register. */
+/** Collects every name a node declares via its `Name` property, in
+ * first-appearance order among reachable nodes, and assigns each one a
+ * general-purpose register (r0-r15 — only 16 exist, `sp`/`ra` are
+ * reserved). Returns the alias lines to emit plus a lookup of which names
+ * actually got a register. */
 function allocateRegisters(reachable: ScriptNode[]): { aliasLines: string[]; declared: Set<string>; warnings: string[] } {
   const order: string[] = []
   const seen = new Set<string>()
   for (const node of reachable) {
-    if (node.ActionType === 'ReadDevice' || node.ActionType === 'SetNumber' || node.ActionType === 'NumberMath') {
+    if (DECLARING_ACTION_TYPES.has(node.ActionType)) {
       const name = (node.Properties.Name ?? '').trim()
       if (name && !seen.has(name)) {
         seen.add(name)
@@ -111,6 +154,11 @@ export function generateScript(
 
   for (const node of reachable) {
     const ctx = `${node.Title} #${node.Number}`
+    const resolve = (key: string, label: string, fallback = '0') =>
+      resolveValue(node.Properties[key] ?? fallback, declared, `${ctx} ${label}`, warnings)
+    const target = (node.Properties.Name ?? '').trim() || 'r15'
+    const next = () => `j ${label(targetOf(node, 'Next'))}`
+
     if (options.professionalComments) lines.push(`# #${node.Number} ${node.Title}`)
     lines.push(`${label(node)}:`)
 
@@ -120,66 +168,275 @@ export function generateScript(
         break
       }
       case 'Sleep': {
-        const seconds = resolveValue(node.Properties.Seconds ?? '1', declared, `${ctx} Seconds`, warnings)
-        lines.push(`sleep ${seconds}`)
-        lines.push(`j ${label(targetOf(node, 'Next'))}`)
+        lines.push(`sleep ${resolve('Seconds', 'Seconds', '1')}`)
+        lines.push(next())
         break
       }
       case 'Yield': {
         lines.push('yield')
-        lines.push(`j ${label(targetOf(node, 'Next'))}`)
+        lines.push(next())
         break
       }
       case 'LoopToStart': {
         lines.push(`j ${label(start)}`)
         break
       }
+      case 'CallSubroutine': {
+        lines.push(`jal ${label(targetOf(node, 'Next'))}`)
+        break
+      }
+      case 'ReturnFromSubroutine': {
+        lines.push('j ra')
+        break
+      }
+
       case 'ReadDevice': {
         const device = node.Properties.Device ?? 'd0'
         const logicType = (node.Properties.LogicType ?? 'On').trim()
-        const name = (node.Properties.Name ?? '').trim()
-        lines.push(`l ${name || 'r15'} ${device} ${logicType}`)
-        lines.push(`j ${label(targetOf(node, 'Next'))}`)
+        lines.push(`l ${target} ${device} ${logicType}`)
+        lines.push(next())
         break
       }
       case 'WriteDevice': {
         const device = node.Properties.Device ?? 'd0'
         const logicType = (node.Properties.LogicType ?? 'On').trim()
-        const value = resolveValue(node.Properties.Value ?? '0', declared, `${ctx} Value`, warnings)
-        lines.push(`s ${device} ${logicType} ${value}`)
-        lines.push(`j ${label(targetOf(node, 'Next'))}`)
+        lines.push(`s ${device} ${logicType} ${resolve('Value', 'Value')}`)
+        lines.push(next())
         break
       }
+      case 'ReadDeviceById': {
+        const deviceId = resolve('DeviceId', 'Device ID', 'id')
+        const logicType = (node.Properties.LogicType ?? 'On').trim()
+        lines.push(`ld ${target} ${deviceId} ${logicType}`)
+        lines.push(next())
+        break
+      }
+      case 'WriteDeviceById': {
+        const deviceId = resolve('DeviceId', 'Device ID', 'id')
+        const logicType = (node.Properties.LogicType ?? 'On').trim()
+        lines.push(`sd ${deviceId} ${logicType} ${resolve('Value', 'Value')}`)
+        lines.push(next())
+        break
+      }
+      case 'IfDeviceConnected': {
+        const device = node.Properties.Device ?? 'd0'
+        const callOnTrue = (node.Properties.CallOnTrue ?? 'false') === 'true'
+        const opcode = 'bdse' + (callOnTrue ? 'al' : '')
+        lines.push(`${opcode} ${device} ${label(targetOf(node, 'True'))}`)
+        lines.push(`j ${label(targetOf(node, 'False'))}`)
+        break
+      }
+      case 'DeviceConnectedValue': {
+        const device = node.Properties.Device ?? 'd0'
+        lines.push(`sdse ${target} ${device}`)
+        lines.push(next())
+        break
+      }
+      case 'CheckDeviceLogicType': {
+        const device = node.Properties.Device ?? 'd0'
+        const logicType = (node.Properties.LogicType ?? 'On').trim()
+        const opcode = (node.Properties.Mode ?? 'Load') === 'Store' ? 'bdnvs' : 'bdnvl'
+        lines.push(`${opcode} ${device} ${logicType} ${label(targetOf(node, 'NotSupported'))}`)
+        lines.push(`j ${label(targetOf(node, 'Supported'))}`)
+        break
+      }
+      case 'ReadDeviceReagent': {
+        const device = node.Properties.Device ?? 'd0'
+        const modeNum = REAGENT_MODE_NUM[node.Properties.ReagentMode ?? 'Contents'] ?? 0
+        const reagent = hashExpr((node.Properties.ReagentName ?? '').trim())
+        lines.push(`lr ${target} ${device} ${modeNum} ${reagent}`)
+        lines.push(next())
+        break
+      }
+      case 'ReagentItemHash': {
+        const device = node.Properties.Device ?? 'd0'
+        const reagent = hashExpr((node.Properties.ReagentName ?? '').trim())
+        lines.push(`rmap ${target} ${device} ${reagent}`)
+        lines.push(next())
+        break
+      }
+
+      case 'BatchReadDevice':
+      case 'BatchWriteDevice': {
+        const deviceType = node.Properties.DeviceType ?? ''
+        const hash = prefabHashFor(deviceType)
+        if (hash === undefined) warnings.push(`${ctx}: no known prefab hash for device type "${deviceType}".`)
+        // '(none)' is the DefaultValue rather than '' so the generic
+        // empty-property validation (getGraphIssues) doesn't flag this
+        // genuinely-optional field as an error.
+        const deviceName = (node.Properties.DeviceName ?? '').trim()
+        const deviceNameFilter = deviceName === '(none)' ? '' : deviceName
+        const logicType = (node.Properties.LogicType ?? 'On').trim()
+        if (node.ActionType === 'BatchReadDevice') {
+          const batchMode = BATCH_MODE_NUM[node.Properties.BatchMode ?? 'Average'] ?? 0
+          lines.push(
+            deviceNameFilter
+              ? `lbn ${target} ${hash ?? 0} ${hashExpr(deviceNameFilter)} ${logicType} ${batchMode}`
+              : `lb ${target} ${hash ?? 0} ${logicType} ${batchMode}`,
+          )
+        } else {
+          const value = resolve('Value', 'Value')
+          lines.push(
+            deviceNameFilter
+              ? `sbn ${hash ?? 0} ${hashExpr(deviceNameFilter)} ${logicType} ${value}`
+              : `sb ${hash ?? 0} ${logicType} ${value}`,
+          )
+        }
+        lines.push(next())
+        break
+      }
+      case 'BatchReadDeviceSlot': {
+        const deviceType = node.Properties.DeviceType ?? ''
+        const hash = prefabHashFor(deviceType)
+        if (hash === undefined) warnings.push(`${ctx}: no known prefab hash for device type "${deviceType}".`)
+        const deviceName = (node.Properties.DeviceName ?? '').trim()
+        const deviceNameFilter = deviceName === '(none)' ? '' : deviceName
+        const slotIndex = resolve('SlotIndex', 'Slot Index', '0')
+        const logicSlotType = (node.Properties.LogicSlotType ?? 'Occupied').trim()
+        const batchMode = BATCH_MODE_NUM[node.Properties.BatchMode ?? 'Average'] ?? 0
+        lines.push(
+          deviceNameFilter
+            ? `lbns ${target} ${hash ?? 0} ${hashExpr(deviceNameFilter)} ${slotIndex} ${logicSlotType} ${batchMode}`
+            : `lbs ${target} ${hash ?? 0} ${slotIndex} ${logicSlotType} ${batchMode}`,
+        )
+        lines.push(next())
+        break
+      }
+      case 'BatchWriteDeviceSlot': {
+        const deviceType = node.Properties.DeviceType ?? ''
+        const hash = prefabHashFor(deviceType)
+        if (hash === undefined) warnings.push(`${ctx}: no known prefab hash for device type "${deviceType}".`)
+        const slotIndex = resolve('SlotIndex', 'Slot Index', '0')
+        const logicSlotType = (node.Properties.LogicSlotType ?? 'Occupied').trim()
+        lines.push(`sbs ${hash ?? 0} ${slotIndex} ${logicSlotType} ${resolve('Value', 'Value')}`)
+        lines.push(next())
+        break
+      }
+      case 'ReadSlot': {
+        const device = node.Properties.Device ?? 'd0'
+        const slotIndex = resolve('SlotIndex', 'Slot Index', '0')
+        const logicSlotType = (node.Properties.LogicSlotType ?? 'Occupied').trim()
+        lines.push(`ls ${target} ${device} ${slotIndex} ${logicSlotType}`)
+        lines.push(next())
+        break
+      }
+      case 'WriteSlot': {
+        const device = node.Properties.Device ?? 'd0'
+        const slotIndex = resolve('SlotIndex', 'Slot Index', '0')
+        const logicSlotType = (node.Properties.LogicSlotType ?? 'Occupied').trim()
+        lines.push(`ss ${device} ${slotIndex} ${logicSlotType} ${resolve('Value', 'Value')}`)
+        lines.push(next())
+        break
+      }
+
       case 'SetNumber': {
-        const name = (node.Properties.Name ?? '').trim()
-        const value = resolveValue(node.Properties.Value ?? '0', declared, `${ctx} Value`, warnings)
-        lines.push(`move ${name || 'r15'} ${value}`)
-        lines.push(`j ${label(targetOf(node, 'Next'))}`)
+        lines.push(`move ${target} ${resolve('Value', 'Value')}`)
+        lines.push(next())
         break
       }
       case 'NumberMath': {
-        const name = (node.Properties.Name ?? '').trim()
         const operator = node.Properties.Operator ?? 'Add'
-        const opcode = MATH_OPCODE[operator] ?? 'add'
-        const a = resolveValue(node.Properties.ValueA ?? '0', declared, `${ctx} Value A`, warnings)
-        if (UNARY_MATH_OPS.has(operator)) {
-          lines.push(`${opcode} ${name || 'r15'} ${a}`)
+        const opcode = NUMBER_MATH_OPCODE[operator] ?? 'add'
+        if (NULLARY_MATH_OPS.has(operator)) {
+          lines.push(`${opcode} ${target}`)
+        } else if (UNARY_MATH_OPS.has(operator)) {
+          lines.push(`${opcode} ${target} ${resolve('ValueA', 'Value A')}`)
+        } else if (TERNARY_MATH_OPS.has(operator)) {
+          lines.push(`${opcode} ${target} ${resolve('ValueA', 'Value A')} ${resolve('ValueB', 'Value B')} ${resolve('ValueC', 'Value C')}`)
         } else {
-          const b = resolveValue(node.Properties.ValueB ?? '0', declared, `${ctx} Value B`, warnings)
-          lines.push(`${opcode} ${name || 'r15'} ${a} ${b}`)
+          lines.push(`${opcode} ${target} ${resolve('ValueA', 'Value A')} ${resolve('ValueB', 'Value B')}`)
         }
-        lines.push(`j ${label(targetOf(node, 'Next'))}`)
+        lines.push(next())
+        break
+      }
+      case 'Select': {
+        lines.push(
+          `select ${target} ${resolve('Condition', 'Condition')} ${resolve('IfTrue', 'If True', '1')} ${resolve('IfFalse', 'If False')}`,
+        )
+        lines.push(next())
         break
       }
       case 'Compare': {
         const operator = node.Properties.Operator ?? 'Equal'
-        const opcode = BRANCH_OPCODE[operator] ?? 'beq'
-        const a = resolveValue(node.Properties.ValueA ?? '0', declared, `${ctx} Value A`, warnings)
-        const b = resolveValue(node.Properties.ValueB ?? '0', declared, `${ctx} Value B`, warnings)
-        lines.push(`${opcode} ${a} ${b} ${label(targetOf(node, 'True'))}`)
-        lines.push(`j ${label(targetOf(node, 'False'))}`)
+        const callOnTrue = (node.Properties.CallOnTrue ?? 'false') === 'true'
+        const a = resolve('ValueA', 'Value A')
+        const trueLabel = label(targetOf(node, 'True'))
+        const falseLabel = label(targetOf(node, 'False'))
+        if (operator === 'IsNaN') {
+          lines.push(`bnan ${a} ${trueLabel}`)
+        } else if (operator === 'ApproxEqual' || operator === 'NotApproxEqual') {
+          const base = operator === 'ApproxEqual' ? 'bap' : 'bna'
+          const b = resolve('ValueB', 'Value B')
+          const c = resolve('ValueC', 'Value C (tolerance)', '0.001')
+          const isZero = b === '0'
+          const opcode = base + (isZero ? 'z' : '') + (callOnTrue ? 'al' : '')
+          lines.push(isZero ? `${opcode} ${a} ${c} ${trueLabel}` : `${opcode} ${a} ${b} ${c} ${trueLabel}`)
+        } else {
+          const base = COMPARE_BASE_OPCODE[operator] ?? 'beq'
+          const b = resolve('ValueB', 'Value B')
+          const isZero = b === '0'
+          const opcode = base + (isZero ? 'z' : '') + (callOnTrue ? 'al' : '')
+          lines.push(isZero ? `${opcode} ${a} ${trueLabel}` : `${opcode} ${a} ${b} ${trueLabel}`)
+        }
+        lines.push(`j ${falseLabel}`)
         break
       }
+
+      case 'Push': {
+        lines.push(`push ${resolve('Value', 'Value')}`)
+        lines.push(next())
+        break
+      }
+      case 'Pop': {
+        lines.push(`pop ${target}`)
+        lines.push(next())
+        break
+      }
+      case 'Peek': {
+        lines.push(`peek ${target}`)
+        lines.push(next())
+        break
+      }
+      case 'Poke': {
+        lines.push(`poke ${resolve('Address', 'Address', '0')} ${resolve('Value', 'Value')}`)
+        lines.push(next())
+        break
+      }
+      case 'GetStack': {
+        const device = node.Properties.Device ?? 'db'
+        lines.push(`get ${target} ${device} ${resolve('Address', 'Address', '0')}`)
+        lines.push(next())
+        break
+      }
+      case 'GetStackById': {
+        const deviceId = resolve('DeviceId', 'Device ID', 'id')
+        lines.push(`getd ${target} ${deviceId} ${resolve('Address', 'Address', '0')}`)
+        lines.push(next())
+        break
+      }
+      case 'PutStack': {
+        const device = node.Properties.Device ?? 'db'
+        lines.push(`put ${device} ${resolve('Address', 'Address', '0')} ${resolve('Value', 'Value')}`)
+        lines.push(next())
+        break
+      }
+      case 'PutStackById': {
+        const deviceId = resolve('DeviceId', 'Device ID', 'id')
+        lines.push(`putd ${deviceId} ${resolve('Address', 'Address', '0')} ${resolve('Value', 'Value')}`)
+        lines.push(next())
+        break
+      }
+      case 'ClearStack': {
+        lines.push(`clr ${node.Properties.Device ?? 'db'}`)
+        lines.push(next())
+        break
+      }
+      case 'ClearStackById': {
+        lines.push(`clrd ${resolve('DeviceId', 'Device ID', 'id')}`)
+        lines.push(next())
+        break
+      }
+
       default: {
         lines.push(`# TODO codegen: ${node.ActionType} ("${node.Title}") not yet implemented.`)
         lines.push(`j ${label(start)}`)

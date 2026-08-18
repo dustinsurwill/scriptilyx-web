@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deviceLogicTypes, deviceNames, logicTypeNamesFor } from './deviceLogicTypes'
+import { deviceLogicTypes, deviceNames, deviceNamesWithHash, logicTypeNamesFor, prefabHashFor } from './deviceLogicTypes'
 
 describe('deviceLogicTypes', () => {
   it('parses all 145 devices with no duplicate names', () => {
@@ -34,5 +34,17 @@ describe('deviceLogicTypes', () => {
 
   it('returns an empty list for a real device with no documented logic types', () => {
     expect(logicTypeNamesFor('Autolathe', 'read')).toEqual([])
+  })
+
+  it('prefabHashFor returns a known device\'s hash and is undefined for devices without one', () => {
+    expect(prefabHashFor('Active Vent')).toBe(-842048328)
+    expect(prefabHashFor('Console')).toBeUndefined() // wiki page has no documented hash
+    expect(prefabHashFor('Some Made Up Device')).toBeUndefined()
+  })
+
+  it('deviceNamesWithHash only includes devices with a known prefab hash', () => {
+    expect(deviceNamesWithHash).toContain('Active Vent')
+    expect(deviceNamesWithHash).not.toContain('Console')
+    expect(deviceNamesWithHash.length).toBeLessThan(deviceNames.length)
   })
 })

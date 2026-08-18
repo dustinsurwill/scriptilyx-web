@@ -157,3 +157,242 @@ describe('generateScript', () => {
     expect(source).toContain(`# #${start.Number} Start`)
   })
 })
+
+function chain(...steps: ScriptNode[]): [ScriptNode[], NodeConnection[]] {
+  const start = node({ ActionType: 'Start' })
+  const nodes = [start, ...steps]
+  const connections: NodeConnection[] = []
+  let prev: ScriptNode = start
+  for (const s of steps) {
+    connections.push(wire(prev, 'Next', s))
+    prev = s
+  }
+  return [nodes, connections]
+}
+
+describe('Number Math — arity dispatch across the expanded operator set', () => {
+  it('unary operators only resolve Value A', () => {
+    const sin = node({ ActionType: 'NumberMath', Properties: { Name: 'r', Operator: 'Sin', ValueA: '1', ValueB: 'bogus' } })
+    const { source, warnings } = generateScript(...chain(sin))
+    expect(source).toContain('sin r 1')
+    expect(warnings).toEqual([]) // ValueB never touched/resolved for a unary op
+  })
+
+  it('binary operators resolve both Value A and Value B', () => {
+    const and = node({ ActionType: 'NumberMath', Properties: { Name: 'r', Operator: 'And', ValueA: '5', ValueB: '3' } })
+    const { source } = generateScript(...chain(and))
+    expect(source).toContain('and r 5 3')
+  })
+
+  it('ternary operators resolve Value A, B, and C', () => {
+    const clamp = node({ ActionType: 'NumberMath', Properties: { Name: 'r', Operator: 'Clamp', ValueA: 'x', ValueB: '0', ValueC: '10' } })
+    const set = node({ ActionType: 'SetNumber', Properties: { Name: 'x', Value: '5' } })
+    const { source, warnings } = generateScript(...chain(set, clamp))
+    expect(warnings).toEqual([])
+    expect(source).toContain('clamp r x 0 10')
+  })
+
+  it('Random is nullary — no operands emitted', () => {
+    const rand = node({ ActionType: 'NumberMath', Properties: { Name: 'r', Operator: 'Random' } })
+    const { source } = generateScript(...chain(rand))
+    expect(source).toContain('rand r')
+    expect(source).not.toContain('rand r 0')
+  })
+
+  it('set-compare operators (value form of Compare) use the s-prefixed mnemonics', () => {
+    const eq = node({ ActionType: 'NumberMath', Properties: { Name: 'r', Operator: 'Equal', ValueA: '1', ValueB: '1' } })
+    const { source } = generateScript(...chain(eq))
+    expect(source).toContain('seq r 1 1')
+  })
+})
+
+describe('Compare — zero-compare and call-and-link opcode selection', () => {
+  it('uses the two-operand form when Value B is not "0"', () => {
+    const cmp = node({ ActionType: 'Compare', OutputPorts: ['True', 'False'], Properties: { ValueA: '5', Operator: 'GreaterThan', ValueB: '2' } })
+    const { source } = generateScript(...chain(cmp))
+    expect(source).toMatch(/bgt 5 2 L\d+/)
+  })
+
+  it('drops Value B and uses the "z" mnemonic when Value B is literally "0"', () => {
+    const cmp = node({ ActionType: 'Compare', OutputPorts: ['True', 'False'], Properties: { ValueA: '5', Operator: 'GreaterThan', ValueB: '0' } })
+    const { source } = generateScript(...chain(cmp))
+    expect(source).toMatch(/bgtz 5 L\d+/)
+    expect(source).not.toMatch(/bgtz 5 0/)
+  })
+
+  it('appends "al" and combines with "z" when Save Return Address (CallOnTrue) is set', () => {
+    const cmp = node({
+      ActionType: 'Compare',
+      OutputPorts: ['True', 'False'],
+      Properties: { ValueA: '5', Operator: 'Equal', ValueB: '0', CallOnTrue: 'true' },
+    })
+    const { source } = generateScript(...chain(cmp))
+    expect(source).toMatch(/beqzal 5 L\d+/)
+  })
+
+  it('ApproxEqual/NotApproxEqual pass a tolerance (Value C) and also support the zero form', () => {
+    const approx = node({
+      ActionType: 'Compare',
+      OutputPorts: ['True', 'False'],
+      Properties: { ValueA: 'x', Operator: 'ApproxEqual', ValueB: '2', ValueC: '0.01' },
+    })
+    const set = node({ ActionType: 'SetNumber', Properties: { Name: 'x', Value: '2' } })
+    const { source } = generateScript(...chain(set, approx))
+    expect(source).toMatch(/bap x 2 0\.01 L\d+/)
+  })
+
+  it('IsNaN is unary and ignores Value B/C entirely', () => {
+    const nan = node({ ActionType: 'Compare', OutputPorts: ['True', 'False'], Properties: { ValueA: 'x', Operator: 'IsNaN' } })
+    const set = node({ ActionType: 'SetNumber', Properties: { Name: 'x', Value: '1' } })
+    const { source } = generateScript(...chain(set, nan))
+    expect(source).toMatch(/bnan x L\d+/)
+  })
+})
+
+describe('Call Subroutine / Return From Subroutine', () => {
+  it('Call Subroutine compiles to jal, Return compiles to "j ra"', () => {
+    const sub = node({ ActionType: 'CallSubroutine' })
+    const ret = node({ ActionType: 'ReturnFromSubroutine', OutputPorts: [] })
+    const { source } = generateScript(...chain(sub, ret))
+    expect(source).toMatch(/jal L\d+/)
+    expect(source).toContain('j ra')
+  })
+})
+
+describe('Device presence/validity checks', () => {
+  it('If Device Connected branches via bdse, and bdseal when CallOnTrue is set', () => {
+    const check = node({
+      ActionType: 'IfDeviceConnected',
+      OutputPorts: ['True', 'False'],
+      Properties: { Device: 'd2', CallOnTrue: 'true' },
+    })
+    const { source } = generateScript(...chain(check))
+    expect(source).toMatch(/bdseal d2 L\d+/)
+  })
+
+  it('Device Connected? stores a 0/1 value via sdse', () => {
+    const val = node({ ActionType: 'DeviceConnectedValue', Properties: { Device: 'd1', Name: 'ok' } })
+    const { source } = generateScript(...chain(val))
+    expect(source).toContain('sdse ok d1')
+  })
+
+  it('Check Device Supports LogicType picks bdnvl for Load and bdnvs for Store', () => {
+    const load = node({
+      ActionType: 'CheckDeviceLogicType',
+      OutputPorts: ['Supported', 'NotSupported'],
+      Properties: { Device: 'd0', LogicType: 'On', Mode: 'Load' },
+    })
+    const { source: loadSrc } = generateScript(...chain(load))
+    expect(loadSrc).toContain('bdnvl d0 On')
+
+    const store = node({
+      ActionType: 'CheckDeviceLogicType',
+      OutputPorts: ['Supported', 'NotSupported'],
+      Properties: { Device: 'd0', LogicType: 'On', Mode: 'Store' },
+    })
+    const { source: storeSrc } = generateScript(...chain(store))
+    expect(storeSrc).toContain('bdnvs d0 On')
+  })
+})
+
+describe('Batch device instructions', () => {
+  it('Batch Read Device Property uses lb with the device type\'s known prefab hash', () => {
+    const batch = node({
+      ActionType: 'BatchReadDevice',
+      Properties: { DeviceType: 'Active Vent', LogicType: 'On', BatchMode: 'Sum', Name: 'total' },
+    })
+    const { source, warnings } = generateScript(...chain(batch))
+    expect(warnings).toEqual([])
+    expect(source).toContain('lb total -842048328 On 1')
+  })
+
+  it('treats the "(none)" sentinel Device Name (its real default value) as no filter, not a literal name', () => {
+    const batch = node({
+      ActionType: 'BatchReadDevice',
+      Properties: { DeviceType: 'Active Vent', DeviceName: '(none)', LogicType: 'On', BatchMode: 'Average', Name: 'v' },
+    })
+    const { source } = generateScript(...chain(batch))
+    expect(source).toContain('lb v -842048328 On 0')
+    expect(source).not.toContain('lbn')
+  })
+
+  it('switches to lbn and emits HASH(...) when Device Name is set', () => {
+    const batch = node({
+      ActionType: 'BatchReadDevice',
+      Properties: { DeviceType: 'Active Vent', DeviceName: 'MyVent', LogicType: 'On', BatchMode: 'Average', Name: 'v' },
+    })
+    const { source } = generateScript(...chain(batch))
+    expect(source).toContain('lbn v -842048328 HASH("MyVent") On 0')
+  })
+
+  it('warns when the chosen device type has no known prefab hash', () => {
+    const batch = node({
+      ActionType: 'BatchWriteDevice',
+      Properties: { DeviceType: 'Console', LogicType: 'On', Value: '1' }, // Console has no documented hash
+    })
+    const { warnings } = generateScript(...chain(batch))
+    expect(warnings.some((w) => w.includes('no known prefab hash'))).toBe(true)
+  })
+
+  it('Batch Write Device Slot Property compiles to sbs', () => {
+    const batch = node({
+      ActionType: 'BatchWriteDeviceSlot',
+      Properties: { DeviceType: 'Active Vent', SlotIndex: '0', LogicSlotType: 'Occupied', Value: '1' },
+    })
+    const { source } = generateScript(...chain(batch))
+    expect(source).toContain('sbs -842048328 0 Occupied 1')
+  })
+})
+
+describe('Stack instructions', () => {
+  it('push/pop/peek compile to their plain mnemonics', () => {
+    const push = node({ ActionType: 'Push', Properties: { Value: '5' } })
+    const pop = node({ ActionType: 'Pop', Properties: { Name: 'v' } })
+    const peek = node({ ActionType: 'Peek', Properties: { Name: 'v2' } })
+    const { source } = generateScript(...chain(push, pop, peek))
+    expect(source).toContain('push 5')
+    expect(source).toContain('pop v')
+    expect(source).toContain('peek v2')
+  })
+
+  it('Poke Stack writes directly to an address with no device operand', () => {
+    const poke = node({ ActionType: 'Poke', Properties: { Address: '3', Value: '7' } })
+    const { source } = generateScript(...chain(poke))
+    expect(source).toContain('poke 3 7')
+  })
+
+  it('Get/Put Stack Value (By ID) use getd/putd', () => {
+    const get = node({ ActionType: 'GetStackById', Properties: { DeviceId: '1234', Address: '0', Name: 'v' } })
+    const put = node({ ActionType: 'PutStackById', Properties: { DeviceId: '1234', Address: '0', Value: '9' } })
+    const { source } = generateScript(...chain(get, put))
+    expect(source).toContain('getd v 1234 0')
+    expect(source).toContain('putd 1234 0 9')
+  })
+})
+
+describe('Select', () => {
+  it('compiles to a single select instruction', () => {
+    const sel = node({ ActionType: 'Select', Properties: { Name: 'r', Condition: 'flag', IfTrue: '1', IfFalse: '0' } })
+    const set = node({ ActionType: 'SetNumber', Properties: { Name: 'flag', Value: '1' } })
+    const { source, warnings } = generateScript(...chain(set, sel))
+    expect(warnings).toEqual([])
+    expect(source).toContain('select r flag 1 0')
+  })
+})
+
+describe('Reagents', () => {
+  it('Read Device Reagent maps ReagentMode to its numeric form and HASHes the reagent name', () => {
+    const reagent = node({
+      ActionType: 'ReadDeviceReagent',
+      Properties: { Device: 'd0', ReagentMode: 'Required', ReagentName: 'Iron', Name: 'amt' },
+    })
+    const { source } = generateScript(...chain(reagent))
+    expect(source).toContain('lr amt d0 1 HASH("Iron")')
+  })
+
+  it('Get Reagent Item Hash compiles to rmap', () => {
+    const rmap = node({ ActionType: 'ReagentItemHash', Properties: { Device: 'd0', ReagentName: 'Iron', Name: 'itemHash' } })
+    const { source } = generateScript(...chain(rmap))
+    expect(source).toContain('rmap itemHash d0 HASH("Iron")')
+  })
+})
