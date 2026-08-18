@@ -10,15 +10,14 @@ import {
   type OnEdgesChange,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { useGraphStore, connectionId } from '../store/graphStore'
-import { nodeDefinitions } from '../data/nodeLibrary'
+import { useGraphStore } from '../store/GraphStoreContext'
+import { connectionId } from '../store/graphStore'
+import type { NodeDefinition } from '../types/graph'
 import { ScriptGraphNode, type ScriptGraphNodeType } from './ScriptGraphNode'
-
-const definitionsById = new Map(nodeDefinitions.map((d) => [d.Id, d]))
 
 const nodeTypes = { scriptNode: ScriptGraphNode }
 
-export function GraphCanvas() {
+export function GraphCanvas({ definitionsById }: { definitionsById: Map<string, NodeDefinition> }) {
   const nodes = useGraphStore((s) => s.nodes)
   const connections = useGraphStore((s) => s.connections)
   const selection = useGraphStore((s) => s.selection)
@@ -50,7 +49,7 @@ export function GraphCanvas() {
           selected: selection.nodeId === scriptNode.Id,
         },
       })),
-    [nodes, selection.nodeId],
+    [nodes, selection.nodeId, definitionsById],
   )
 
   const flowEdges: Edge[] = useMemo(

@@ -1,4 +1,4 @@
-import type { ScriptNode } from '../../types/graph'
+import type { ScriptNode } from '../../../types/graph'
 import type { EmitContext, NodeEmit } from './types'
 
 let counter = 0

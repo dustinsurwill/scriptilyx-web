@@ -1,13 +1,11 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, CSSProperties } from 'react'
 import type { GraphSaveData } from '../types/graph'
-import { useGraphStore } from '../store/graphStore'
+import type { Game } from '../types/game'
+import { useGraphStore } from '../store/GraphStoreContext'
 import { useGeneratedScript } from '../hooks/useGeneratedScript'
-import { remapLegacyGraph } from '../lib/legacyImport'
 import { TemplatesMenu } from './TemplatesMenu'
 import { WizardsMenu } from './WizardsMenu'
-
-const SAVE_FILENAME = 'script.segraph'
 
 const buttonStyle: CSSProperties = {
   fontSize: 12,
@@ -25,7 +23,7 @@ const disabledButtonStyle: CSSProperties = {
   cursor: 'default',
 }
 
-export function Toolbar() {
+export function Toolbar({ game }: { game: Game }) {
   const nodes = useGraphStore((s) => s.nodes)
   const connections = useGraphStore((s) => s.connections)
   const nextNodeNumber = useGraphStore((s) => s.nextNodeNumber)
@@ -35,8 +33,16 @@ export function Toolbar() {
   const redo = useGraphStore((s) => s.redo)
   const loadGraph = useGraphStore((s) => s.loadGraph)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { displayed } = useGeneratedScript()
+  const { displayed } = useGeneratedScript(game)
   const [copied, setCopied] = useState(false)
+
+  const definitionsById = useMemo(
+    () => new Map(game.nodeDefinitions.map((d) => [d.Id, d])),
+    [game],
+  )
+
+  const saveFilename = `script${game.saveFileExtension}`
+  const scriptFilename = `Script${game.fileExtension}`
 
   const handleCopyScript = async () => {
     await navigator.clipboard.writeText(displayed)
@@ -49,7 +55,7 @@ export function Toolbar() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'Script.cs'
+    a.download = scriptFilename
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -60,7 +66,7 @@ export function Toolbar() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = SAVE_FILENAME
+    a.download = saveFilename
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -83,7 +89,7 @@ export function Toolbar() {
       if (!Array.isArray(data.Nodes) || !Array.isArray(data.Connections)) {
         throw new Error('Missing Nodes/Connections array')
       }
-      loadGraph(remapLegacyGraph(data))
+      loadGraph(game.remapLegacyGraph ? game.remapLegacyGraph(data) : data)
     } catch (err) {
       alert(`Couldn't open "${file.name}": ${err instanceof Error ? err.message : 'invalid file'}`)
     }
@@ -107,14 +113,18 @@ export function Toolbar() {
         Redo
       </button>
       <span style={{ width: 1, alignSelf: 'stretch', background: '#374151' }} />
-      <button style={buttonStyle} onClick={handleSave} title="Download the graph as a .segraph file">
+      <button style={buttonStyle} onClick={handleSave} title={`Download the graph as a ${saveFilename} file`}>
         Save
       </button>
-      <button style={buttonStyle} onClick={handleOpenClick} title="Load a graph from a .segraph/.json file">
+      <button style={buttonStyle} onClick={handleOpenClick} title={`Load a graph from a ${game.saveFileExtension}/.json file`}>
         Open
       </button>
-      <TemplatesMenu />
-      <WizardsMenu />
+      {game.templates && game.templates.length > 0 && (
+        <TemplatesMenu templates={game.templates} definitionsById={definitionsById} />
+      )}
+      {game.wizards && game.wizards.length > 0 && (
+        <WizardsMenu wizards={game.wizards} definitionsById={definitionsById} />
+      )}
       <button
         style={nodes.length === 0 && connections.length === 0 ? disabledButtonStyle : buttonStyle}
         onClick={handleClear}
@@ -127,13 +137,13 @@ export function Toolbar() {
       <button style={buttonStyle} onClick={handleCopyScript} title="Copy the script shown below to the clipboard">
         {copied ? 'Copied!' : 'Copy Script'}
       </button>
-      <button style={buttonStyle} onClick={handleExportScript} title="Download the script shown below as a .cs file">
+      <button style={buttonStyle} onClick={handleExportScript} title={`Download the script shown below as a ${game.fileExtension} file`}>
         Export Script
       </button>
       <input
         ref={fileInputRef}
         type="file"
-        accept=".segraph,.json,application/json"
+        accept={`${game.saveFileExtension},.json,application/json`}
         onChange={handleFileSelected}
         style={{ display: 'none' }}
       />

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { NodeConnection, ScriptNode } from '../../types/graph'
+import type { NodeConnection, ScriptNode } from '../../../types/graph'
 import { generateScript, methodName } from './generate'
 
 let counter = 0

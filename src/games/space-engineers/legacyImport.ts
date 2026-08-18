@@ -1,6 +1,6 @@
-import { LEGACY_NODE_ID_REMAP } from '../data/legacyNodeRemap'
-import { nodeDefinitions } from '../data/nodeLibrary'
-import type { GraphSaveData, ScriptNode } from '../types/graph'
+import { LEGACY_NODE_ID_REMAP } from './legacyNodeRemap'
+import { nodeDefinitions } from './nodeLibrary'
+import type { GraphSaveData, ScriptNode } from '../../types/graph'
 
 const definitionsById = new Map(nodeDefinitions.map((d) => [d.Id, d]))
 

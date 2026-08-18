@@ -1,4 +1,4 @@
-import type { ScriptNode } from '../../types/graph'
+import type { ScriptNode } from '../../../types/graph'
 import { genericEmitters } from './emitters'
 import { extendedEmitters } from './extendedEmitters'
 import * as logic from './logicEmitters'

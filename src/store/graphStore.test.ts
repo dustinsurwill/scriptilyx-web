@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { useGraphStore } from './graphStore'
+import { createGraphStore } from './graphStore'
 import type { GraphSaveData, NodeDefinition } from '../types/graph'
+
+const useGraphStore = createGraphStore({ autosaveKey: 'test:graph' })
 
 const START_DEF: NodeDefinition = {
   Id: 'logic.start',

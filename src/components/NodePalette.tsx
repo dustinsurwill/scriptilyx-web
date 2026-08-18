@@ -4,6 +4,7 @@ import type { NodeDefinition } from '../types/graph'
 interface NodePaletteProps {
   nodeDefinitions: NodeDefinition[]
   onAddNode: (definition: NodeDefinition) => void
+  title?: string
 }
 
 function matchesQuery(node: NodeDefinition, query: string): boolean {
@@ -43,7 +44,7 @@ function categoryRank(category: string): number {
   return i === -1 ? CATEGORY_PRIORITY.length : i
 }
 
-export function NodePalette({ nodeDefinitions, onAddNode }: NodePaletteProps) {
+export function NodePalette({ nodeDefinitions, onAddNode, title = 'WireRig' }: NodePaletteProps) {
   const [query, setQuery] = useState('')
   const [collapsed, setCollapsed] = useState<Set<string>>(
     () => new Set(nodeDefinitions.map((n) => n.Category)),
@@ -83,7 +84,7 @@ export function NodePalette({ nodeDefinitions, onAddNode }: NodePaletteProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ padding: '12px' }}>
-        <h1 style={{ fontSize: '18px', margin: '0 0 8px' }}>WireRig</h1>
+        <h1 style={{ fontSize: '18px', margin: '0 0 8px' }}>{title}</h1>
         <input
           type="text"
           placeholder="Search nodes…"

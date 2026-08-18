@@ -5,6 +5,38 @@
 
 ## Status
 
+**Milestone 8 in progress (branch `milestone-8-multi-game-plumbing`, not yet
+merged).** Turns "game" into a pluggable concept ahead of adding Stationeers
+IC10 and CC:Tweaked/OpenComputers as second/third targets. `src/types/
+game.ts` defines the `Game`/`GameTemplate`/`GameWizard`/`GameItem` contracts;
+all Space Engineers content and codegen moved under `src/games/space-
+engineers/` (node library, templates, wizards, item list, the whole
+codegen engine, legacy `.segraph` import) and is wrapped as one `Game`
+object in `src/games/space-engineers/index.ts`, registered in `src/games/
+registry.ts`. Added `react-router-dom` (`HashRouter`, since GitHub Pages has
+no server-side SPA-fallback rewrite) with two routes: `/` (`LandingPage.tsx`,
+a card per registered game) and `/:gameId` (`Editor.tsx`, replaces the old
+single `App.tsx`). `TemplatesMenu`/`WizardsMenu`/`GraphCanvas`/`ItemPicker`/
+`PropertyPanel`/`Toolbar` no longer import Space Engineers data directly —
+they take `nodeDefinitions`/`templates`/`wizards`/`itemList`/`definitionsById`
+as props from `Editor`, sourced from the active `Game`. The graph store
+(`src/store/graphStore.ts`) became a `createGraphStore()` factory instead of
+one module-level singleton; `src/store/GraphStoreContext.tsx` provides one
+isolated store instance per mounted game (autosave key `wirerig:<gameId>:
+graph`, `legacyAutosaveKey` fallback and `remapLegacyGraph` both wired only
+for Space Engineers) so switching games can never leak undo history or
+autosave state between them. `src/lib/graphAssembly.ts` (DAG assembly +
+layered layout) and `src/lib/variableRegistry.ts` stayed shared/game-generic
+rather than moving under `space-engineers/` — the latter's role tables are
+SE-specific content, but `getGraphIssues` (also shared) depends on it, and
+moving it would have forced a shared, generic module to import from one
+specific game's folder; revisit once a second game needs its own variable
+convention. No behavior change for Space Engineers itself — verified via
+the full test suite (190 tests) and a manual browser pass (landing page →
+Space Engineers → Templates/Wizards/ItemPicker/autosave-round-trip all
+still work identically). See "Multi-game architecture" below for the full
+design writeup and the Stationeers IC10/CC:Tweaked/OpenComputers plan.
+
 **Milestone 7.1 done (merged in #8).** Templates (`src/data/
 scenarioTemplates.ts`, `TemplatesMenu.tsx`) — 4 static worked-example
 graphs laid out with a branch-aware layered layout (`src/data/
@@ -46,6 +78,12 @@ node).
       import (merged in #7)
 - [ ] Milestone 7.3 — Stretch: `.segraph` export (legacy-compatible), may end
       up documented-only
+- [ ] Milestone 8 — Multi-game plumbing: landing page, game registry, per-game
+      graph store/autosave (branch `milestone-8-multi-game-plumbing`)
+- [ ] Milestone 9 — Stationeers IC10 backend (small/focused node catalog,
+      flat line-numbered codegen, 128-line/90-char validation)
+- [ ] Milestone 10 — CC:Tweaked backend
+- [ ] Milestone 11 — OpenComputers backend
 
 ## Context
 
@@ -164,6 +202,94 @@ on-demand helper-method library, property coercion utilities, and
 validation (no/multiple Start nodes, unreachable nodes, unconnected
 required ports, non-numeric `number` properties, dangling connections, plus
 size-based warnings).
+
+## Multi-game architecture (Milestone 8+)
+
+Turns this from a single-game tool into a "pick a game" shell. Each game
+lives under `src/games/<id>/` and exports one `Game` object
+(`src/types/game.ts`): `nodeDefinitions`, `generate()`, an optional
+`minify()`, an optional `remapLegacyGraph()` (only Space Engineers has a
+legacy desktop-app format to import from), and optional `templates`/
+`wizards`/`itemList`. `src/games/registry.ts` collects every game's export
+into one `games` map the landing page and router read from.
+
+Key finding from the Space Engineers codegen deep-dive that shaped this:
+the `NodeEmitter`/`EmitContext`/`NodeEmit` contract
+(`src/games/space-engineers/codegen/types.ts`) is genuinely language-
+neutral, but every concrete emitter and the whole program-shell emission in
+`generate.ts` (constructor/`Main`/dispatch switch) is raw, non-abstracted
+C# text. **Conclusion: each game owns its own parallel `codegen/` module,
+not a shared backend** — there is no useful shared intermediate
+representation to extract, only a shared *taxonomy* to informally reuse.
+What does carry over as-is across every game: `src/types/graph.ts`
+(`NodeDefinition`/`ScriptNode`/`NodeConnection`/`GraphSaveData`),
+`src/lib/graphAssembly.ts` (ref-addressed DAG assembly + layered layout,
+takes `definitionsById` as a parameter — already game-agnostic), the graph
+store/undo-redo/autosave machinery, and all canvas/property-panel/palette/
+validation UI chrome.
+
+Routing: `HashRouter` (`/` → `LandingPage`, `/:gameId` → `Editor`) — chosen
+over `BrowserRouter` because GitHub Pages has no server-side rewrite to
+fall back unmatched paths to `index.html`; a hash URL needs no such
+fallback. Unknown `:gameId` redirects to `/`.
+
+Per-game isolation: `GraphStoreProvider` (`src/store/GraphStoreContext.tsx`)
+creates a fresh `createGraphStore()` instance keyed by the active `Game`
+(via a React `key` on the provider, so React fully unmounts/remounts on
+game switch) — own undo history, own autosave key
+(`wirerig:<gameId>:graph`), so switching games can never leak state between
+them.
+
+### Stationeers IC10 (Milestone 9 — build first)
+
+Chosen to go first: smallest node catalog, no block-API surface to design
+against, and the hardware's own 128-line/90-char-per-line cap forces a
+small, quickly-finished catalog rather than an open-ended one.
+
+Constraints (from IC10's own public instruction-set docs — same clean-room
+posture as Space Engineers' codegen, see "IP handling" above; sourcing
+notes go in `docs/ic10-api-notes.md` once this milestone starts): 128 lines
+max, 90 chars/line max; 16 general-purpose registers (`r0`-`r15`) plus `sp`/
+`ra`; device registers `d0`-`d5` (+`db` for the IC's own housing); no
+functions/call stack in the normal sense — control flow is `j`/`jal`/branch
+instructions to line numbers, not method calls; no string type, device I/O
+is `l`/`s` against a fixed `LogicType` enum (conceptually the same "read/
+write a block property" shape as Space Engineers' terminal-property
+emitters, just register-based instead of interface-based).
+
+Catalog stays small/focused (tens of nodes, not hundreds) per design
+decision — large graphs are physically impossible under the line cap
+regardless of catalog size: control flow (Start, Sleep, Yield, a Branch/
+Compare node), a generic Math node (add/sub/mul/div/mod/min/max/abs/round/
+floor/ceil/sqrt), Read/Write Device Property (device-pin combo + LogicType
+combo — two generic nodes covering the whole device API). No Templates/
+Wizards/ItemPicker required for v1 (all optional on `Game`).
+
+Codegen is flat and line-numbered — no recursive method calls, no classes:
+walk the graph from Start, assign each reachable node a label instead of a
+method name, emit 1-4 lines per node directly. No tick-budget/recursive-
+mode split like Space Engineers has, since there's no call stack to
+protect. The single most important piece of UX for this target: hard
+128-line/90-char validation surfaced through the existing `ValidationPanel`
+(reused as-is) — going over the cap silently produces an uncompilable
+script in-game otherwise.
+
+### CC:Tweaked and OpenComputers (Milestones 10/11)
+
+Two fully separate `Game` entries (not a merged catalog) per design
+decision — the mods have incompatible Lua APIs
+(`peripheral.call`/`os.pullEvent` event-loop style vs.
+`component.proxy`-based). Both are architecturally closer to Space
+Engineers' "Start → wire things up" codegen shape than to IC10's flat line
+list (an event loop, not a flat instruction budget), so Space Engineers'
+`generate.ts` is the better structural reference for these two. Catalog
+size likely closer to Space Engineers' in scope (turtle movement/
+inventory, peripheral calls, redstone I/O, rednet messaging for CC:Tweaked;
+component-proxy equivalents for OpenComputers) given no hard line cap
+forcing minimalism — real content-authoring work, not detailed here ahead
+of time, same as Space Engineers' and IC10's catalogs weren't designed
+inside this planning doc either. Neither gets a `remapLegacyGraph` (no
+prior desktop tool to import from for either).
 
 ## New feature: Minify
 

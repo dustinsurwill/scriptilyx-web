@@ -1,5 +1,6 @@
-import { useGraphStore } from '../store/graphStore'
+import { useGraphStore } from '../store/GraphStoreContext'
 import { useGeneratedScript } from '../hooks/useGeneratedScript'
+import type { Game } from '../types/game'
 
 // The programmable block's terminal rejects scripts over 100,000 chars.
 const PB_CHAR_LIMIT = 100_000
@@ -12,12 +13,12 @@ function sizeColor(chars: number): string {
   return '#22c55e'
 }
 
-export function ScriptPreview() {
+export function ScriptPreview({ game }: { game: Game }) {
   const detailedComments = useGraphStore((s) => s.detailedComments)
   const setDetailedComments = useGraphStore((s) => s.setDetailedComments)
   const minify = useGraphStore((s) => s.minify)
   const setMinify = useGraphStore((s) => s.setMinify)
-  const { source, minified, displayed, warnings } = useGeneratedScript()
+  const { source, minified, displayed, warnings } = useGeneratedScript(game)
 
   return (
     <div

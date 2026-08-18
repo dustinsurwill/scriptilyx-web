@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { nodeDefinitions } from '../data/nodeLibrary'
-import { buildWizardGraph, wizardTemplates } from '../data/wizardTemplates'
-import type { WizardTemplate } from '../data/wizardTemplates'
-import { useGraphStore } from '../store/graphStore'
+import type { NodeDefinition } from '../types/graph'
+import type { GameWizard } from '../types/game'
+import { useGraphStore } from '../store/GraphStoreContext'
 import { WizardModal } from './WizardModal'
-
-const definitionsById = new Map(nodeDefinitions.map((d) => [d.Id, d]))
 
 const buttonStyle: CSSProperties = {
   fontSize: 12,
@@ -18,14 +15,20 @@ const buttonStyle: CSSProperties = {
   cursor: 'pointer',
 }
 
-/** Toolbar dropdown listing the practical, ready-to-use scripts in
- * src/data/wizardTemplates.ts. Deliberately separate from TemplatesMenu:
- * picking one opens a short form (WizardModal) to fill in the player's own
- * block/group names first, then builds and loads the graph — vs.
- * Templates, which load a fixed example graph immediately. */
-export function WizardsMenu() {
+/** Toolbar dropdown listing the active game's practical, ready-to-use
+ * scripts. Deliberately separate from TemplatesMenu: picking one opens a
+ * short form (WizardModal) to fill in the player's own block/group names
+ * first, then builds and loads the graph — vs. Templates, which load a
+ * fixed example graph immediately. */
+export function WizardsMenu({
+  wizards,
+  definitionsById,
+}: {
+  wizards: GameWizard[]
+  definitionsById: Map<string, NodeDefinition>
+}) {
   const [open, setOpen] = useState(false)
-  const [active, setActive] = useState<WizardTemplate | null>(null)
+  const [active, setActive] = useState<GameWizard | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const nodes = useGraphStore((s) => s.nodes)
   const connections = useGraphStore((s) => s.connections)
@@ -48,7 +51,7 @@ export function WizardsMenu() {
     ) {
       return
     }
-    loadGraph(buildWizardGraph(active, values, definitionsById))
+    loadGraph(active.build(values, definitionsById))
     setActive(null)
   }
 
@@ -73,7 +76,7 @@ export function WizardsMenu() {
             boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
           }}
         >
-          {wizardTemplates.map((wizard) => (
+          {wizards.map((wizard) => (
             <button
               key={wizard.id}
               onClick={() => {

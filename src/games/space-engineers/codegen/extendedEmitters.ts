@@ -1,4 +1,4 @@
-import type { ScriptNode } from '../../types/graph'
+import type { ScriptNode } from '../../../types/graph'
 import { boolLiteral, numberLiteral, stringLiteral } from './format'
 import {
   blockCondition,

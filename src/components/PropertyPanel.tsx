@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { NodeDefinition, ScriptNode } from '../types/graph'
-import { useGraphStore } from '../store/graphStore'
+import { useGraphStore } from '../store/GraphStoreContext'
 import { buildVariableRegistry, type VarKind, type VariableRegistry } from '../lib/variableRegistry'
 import { ItemPicker } from './ItemPicker'
+import type { GameItem } from '../types/game'
 
 const ALL_KINDS: VarKind[] = ['num', 'text', 'bool']
 
 interface PropertyPanelProps {
   scriptNode: ScriptNode | undefined
   definition: NodeDefinition | undefined
+  itemList?: GameItem[]
 }
 
 /** Extra usage notes for properties whose syntax isn't self-explanatory
@@ -105,7 +107,7 @@ function VariablePicker({
   )
 }
 
-export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
+export function PropertyPanel({ scriptNode, definition, itemList }: PropertyPanelProps) {
   const updateNodeProperty = useGraphStore((s) => s.updateNodeProperty)
   const checkpoint = useGraphStore((s) => s.checkpoint)
   const allNodes = useGraphStore((s) => s.nodes)
@@ -156,7 +158,7 @@ export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
             {help && (
               <div style={{ marginBottom: 4, fontSize: 11, opacity: 0.65, lineHeight: 1.4 }}>{help}</div>
             )}
-            {isItemIdField(key) ? (
+            {isItemIdField(key) && itemList ? (
               <div style={{ display: 'flex', gap: 4 }}>
                 <input
                   type="text"
@@ -165,7 +167,7 @@ export function PropertyPanel({ scriptNode, definition }: PropertyPanelProps) {
                   onChange={(e) => updateNodeProperty(scriptNode.Id, key, e.target.value)}
                   style={{ width: '100%', boxSizing: 'border-box' }}
                 />
-                <ItemPicker onPick={(id) => updateNodeProperty(scriptNode.Id, key, id)} />
+                <ItemPicker items={itemList} onPick={(id) => updateNodeProperty(scriptNode.Id, key, id)} />
               </div>
             ) : type === 'multiline' || (type === 'text' && help) ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

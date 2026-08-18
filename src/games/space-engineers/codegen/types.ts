@@ -1,5 +1,5 @@
-import type { ScriptNode } from '../../types/graph'
-import type { VarKind } from '../variableRegistry'
+import type { ScriptNode } from '../../../types/graph'
+import type { VarKind } from '../../../lib/variableRegistry'
 
 export interface CodegenOptions {
   /** Tick-budgeted state machine for graphs too large for one game tick.

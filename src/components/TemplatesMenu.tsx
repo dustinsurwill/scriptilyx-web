@@ -1,11 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { nodeDefinitions } from '../data/nodeLibrary'
-import { buildScenarioGraph, scenarioTemplates } from '../data/scenarioTemplates'
-import type { ScenarioTemplate } from '../data/scenarioTemplates'
-import { useGraphStore } from '../store/graphStore'
-
-const definitionsById = new Map(nodeDefinitions.map((d) => [d.Id, d]))
+import type { NodeDefinition } from '../types/graph'
+import type { GameTemplate } from '../types/game'
+import { useGraphStore } from '../store/GraphStoreContext'
 
 const buttonStyle: CSSProperties = {
   fontSize: 12,
@@ -17,13 +14,17 @@ const buttonStyle: CSSProperties = {
   cursor: 'pointer',
 }
 
-const tiers: Array<ScenarioTemplate['tier']> = ['Beginner', 'Advanced', 'Unified']
-
-/** Toolbar dropdown listing the pre-built scenario graphs from
- * src/data/scenarioTemplates.ts, grouped by tier. Loading one replaces the
- * whole graph (same confirm-if-non-empty guard as Toolbar's Clear button),
- * as one undoable step via loadGraph. */
-export function TemplatesMenu() {
+/** Toolbar dropdown listing the active game's pre-built scenario graphs,
+ * grouped by tier (in first-seen order). Loading one replaces the whole
+ * graph (same confirm-if-non-empty guard as Toolbar's Clear button), as
+ * one undoable step via loadGraph. */
+export function TemplatesMenu({
+  templates,
+  definitionsById,
+}: {
+  templates: GameTemplate[]
+  definitionsById: Map<string, NodeDefinition>
+}) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const nodes = useGraphStore((s) => s.nodes)
@@ -39,8 +40,10 @@ export function TemplatesMenu() {
     return () => window.removeEventListener('mousedown', handler)
   }, [open])
 
+  const tiers = [...new Set(templates.map((t) => t.tier))]
+
   const handlePick = (templateId: string) => {
-    const template = scenarioTemplates.find((t) => t.id === templateId)
+    const template = templates.find((t) => t.id === templateId)
     if (!template) return
     if (
       (nodes.length > 0 || connections.length > 0) &&
@@ -48,7 +51,7 @@ export function TemplatesMenu() {
     ) {
       return
     }
-    loadGraph(buildScenarioGraph(template, definitionsById))
+    loadGraph(template.build(definitionsById))
     setOpen(false)
   }
 
@@ -74,7 +77,7 @@ export function TemplatesMenu() {
           }}
         >
           {tiers.map((tier) => {
-            const inTier = scenarioTemplates.filter((t) => t.tier === tier)
+            const inTier = templates.filter((t) => t.tier === tier)
             if (inTier.length === 0) return null
             return (
               <div key={tier} style={{ marginBottom: 8 }}>

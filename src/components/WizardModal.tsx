@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { WizardTemplate } from '../data/wizardTemplates'
+import type { GameWizard } from '../types/game'
 
 /** Fill-in-the-blanks form for a WizardTemplate — opened by WizardsMenu
  * before building the graph, so the handful of block/group names and
@@ -12,7 +12,7 @@ export function WizardModal({
   onCancel,
   onSubmit,
 }: {
-  wizard: WizardTemplate
+  wizard: GameWizard
   onCancel: () => void
   onSubmit: (values: Record<string, string>) => void
 }) {

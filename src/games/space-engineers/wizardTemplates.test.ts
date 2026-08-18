@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { nodeDefinitions } from './nodeLibrary'
 import { buildWizardGraph, wizardTemplates } from './wizardTemplates'
-import { generateScript } from '../lib/codegen/generate'
-import { getGraphIssues } from '../lib/graphIssues'
+import { generateScript } from './codegen/generate'
+import { getGraphIssues } from '../../lib/graphIssues'
 
 const definitionsById = new Map(nodeDefinitions.map((d) => [d.Id, d]))
 
