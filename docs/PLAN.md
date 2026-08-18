@@ -1,4 +1,4 @@
-# Scriptilyx Web — Implementation Plan
+# WireRig — Implementation Plan
 
 > Working plan for this project, kept in sync as milestones land. See
 > `CLAUDE.md` at the repo root for the condensed, load-bearing constraints.
@@ -50,7 +50,7 @@ node).
 ## Context
 
 Scriptilyx SE is a Windows/WPF desktop app for visually building Space
-Engineers programmable-block scripts. This project (`scriptilyx-web`) is a
+Engineers programmable-block scripts. This project (`wirerig`) is a
 from-scratch web app — React + TypeScript + React Flow, deployed as a
 static site to GitHub Pages — that reproduces the tool's functionality in
 the browser, with no backend, plus one new feature the desktop app never
@@ -191,7 +191,7 @@ count itself always shown so it's not just a color guess.
 
 1. **Repo/pipeline skeleton** ✅ — new repo, Vite+React+TS scaffold, GitHub
    Actions → Pages deploy proven working (live at
-   https://dustinsurwill.github.io/scriptilyx-web/).
+   https://dustinsurwill.github.io/wirerig/).
 2. **Data layer** — types, `NodeLibrary.json` loading, node palette list (no
    canvas yet) to validate data end-to-end.
 3. **Canvas** — React Flow integration, custom node component, property

@@ -1,6 +1,6 @@
-# Scriptilyx Web
+# WireRig
 
-**[Live site](https://dustinsurwill.github.io/scriptilyx-web/)**
+**[Live site](https://dustinsurwill.github.io/wirerig/)**
 
 A browser-based, node-graph visual editor for building Space Engineers
 programmable-block scripts. Wire up nodes on a canvas and get a ready-to-paste
@@ -15,7 +15,7 @@ exported/imported as `.segraph` files.
 This project is inspired by and reuses the node-database concept and JSON
 data format (block/action definitions) from **[Scriptilyx SE](https://github.com/ChaosVROne/Scriptilyx-SE)**
 by **ChaosVROne / Parallel Infinite Worlds Company**, a Windows desktop tool
-for the same purpose. Scriptilyx Web is an independent, unaffiliated
+for the same purpose. WireRig is an independent, unaffiliated
 reimplementation for the browser — it does not include or derive from
 Scriptilyx SE's source code. If you want the original Windows desktop app,
 get it from the link above.

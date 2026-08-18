@@ -11,7 +11,8 @@ export function connectionId(c: NodeConnection): string {
   return `${c.FromNodeId}::${c.FromPort}->${c.ToNodeId}::${c.ToPort}`
 }
 
-const AUTOSAVE_KEY = 'scriptilyx-web:graph'
+const AUTOSAVE_KEY = 'wirerig:graph'
+const LEGACY_AUTOSAVE_KEY = 'scriptilyx-web:graph'
 const HISTORY_LIMIT = 100
 
 /** The three fields that make up an undo/redo checkpoint (and, separately,
@@ -27,7 +28,10 @@ interface HistorySnapshot {
 function readAutosave(): HistorySnapshot | null {
   if (typeof localStorage === 'undefined') return null
   try {
-    const raw = localStorage.getItem(AUTOSAVE_KEY)
+    // One-time migration from the pre-rename autosave key: prefer the new
+    // key, but fall back to the old one so renaming the project doesn't
+    // silently drop a returning user's in-progress graph.
+    const raw = localStorage.getItem(AUTOSAVE_KEY) ?? localStorage.getItem(LEGACY_AUTOSAVE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as GraphSaveData
     if (!Array.isArray(parsed.Nodes) || !Array.isArray(parsed.Connections)) return null

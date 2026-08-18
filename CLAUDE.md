@@ -1,8 +1,8 @@
 # CLAUDE.md
 
-Scriptilyx Web: a browser-based node-graph editor for building Space
-Engineers programmable-block scripts. React + TypeScript + React Flow,
-static site, deployed to GitHub Pages. No backend.
+WireRig: a browser-based node-graph editor for building Space Engineers
+programmable-block scripts. React + TypeScript + React Flow, static site,
+deployed to GitHub Pages. No backend.
 
 Full plan and rationale: `docs/PLAN.md`. Keep it updated as milestones land
 — it's the source of truth for scope and design decisions, not this file.

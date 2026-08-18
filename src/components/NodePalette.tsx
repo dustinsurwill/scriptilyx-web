@@ -83,7 +83,7 @@ export function NodePalette({ nodeDefinitions, onAddNode }: NodePaletteProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ padding: '12px' }}>
-        <h1 style={{ fontSize: '18px', margin: '0 0 8px' }}>Scriptilyx Web</h1>
+        <h1 style={{ fontSize: '18px', margin: '0 0 8px' }}>WireRig</h1>
         <input
           type="text"
           placeholder="Search nodes…"
