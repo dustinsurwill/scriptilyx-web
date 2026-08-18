@@ -72,22 +72,22 @@ autosave plus manual file export/import — both client-only.
 
 We are not the original author (ChaosVROne) and not authorized by them. The
 original repo deliberately ships no source and no LICENSE — that's "all
-rights reserved" by default, not an oversight. Concretely:
+rights reserved" by default, not an oversight. The original app's source
+code is never committed here or referenced in code comments/commits; any
+local research into how it behaves is kept entirely outside this repo.
 
-- The original app's source code is never committed here or referenced in
-  code comments/commits. Any local research into how the original app
-  behaves is kept entirely outside this repo.
-- The codegen engine is a **clean-room reimplementation**, not a port of the
-  original's algorithm/structure. It's designed directly from the node
-  *spec* (`NodeLibrary.json`'s `Title`/`Description`/`Preview`/ports/
-  properties already documents required behavior in plain English) and the
-  public Space Engineers Programmable Block API — not from the original's
-  internal code shape.
-- `NodeLibrary.json` / `ConveyorSorterItems.json` / node-pack JSON are reused
-  verbatim as the node database. This is plain data (block names,
-  categories, action ids, UI copy) already shipped publicly in the app's own
-  releases — much lower creative-expression/copyright weight than source
-  code — and is credited in the data file header and README.
+`NodeLibrary.json` / `ConveyorSorterItems.json` are reused verbatim as the
+node database — plain data (block names, categories, action ids, UI copy)
+already shipped publicly in the app's own releases — credited in the data
+file header and README. That credit stays regardless of this project's own
+name/branding, as long as this data is shipped.
+
+The codegen engine is a clean-room reimplementation: built from the node
+*spec* (`NodeLibrary.json`'s `Title`/`Description`/`Preview`/ports/
+properties) and the public Space Engineers Programmable Block API — ModAPI
+XML docs shipped with the game, and the malforge/keensoftwarehouse public
+API references — never from the original app's code. See
+`docs/codegen-api-notes.md` for the source-by-source breakdown.
 
 ## Tech stack
 
