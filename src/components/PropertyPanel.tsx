@@ -3,7 +3,7 @@ import type { NodeDefinition, ScriptNode } from '../types/graph'
 import { useGraphStore } from '../store/graphStoreContext'
 import { buildVariableRegistry, type VarKind, type VariableRegistry } from '../lib/variableRegistry'
 import { ItemPicker } from './ItemPicker'
-import type { GameItem } from '../types/game'
+import type { GameItem, Game } from '../types/game'
 
 const ALL_KINDS: VarKind[] = ['num', 'text', 'bool']
 
@@ -11,6 +11,7 @@ interface PropertyPanelProps {
   scriptNode: ScriptNode | undefined
   definition: NodeDefinition | undefined
   itemList?: GameItem[]
+  logicTypeCatalog?: Game['logicTypeCatalog']
 }
 
 /** Extra usage notes for properties whose syntax isn't self-explanatory
@@ -35,6 +36,10 @@ const PROPERTY_HELP: Record<string, string> = {
     'The game only shows item names like "Iron Ore" — use Pick Item ID to look it up.',
   'ext.inventory.if_item_below:ItemType':
     'The game only shows item names like "Iron Ore" — use Pick Item ID to look it up.',
+  'ic10.device.read:LogicType':
+    'LogicType availability is device-specific — set Device Type above, then use Pick LogicType to see valid names for it (or check the in-game Stationpedia).',
+  'ic10.device.write:LogicType':
+    'LogicType availability is device-specific — set Device Type above, then use Pick LogicType to see valid names for it (or check the in-game Stationpedia).',
 }
 
 /** ItemId/ItemType fields (conveyor sorter filters, inventory checks) hold
@@ -44,6 +49,17 @@ const PROPERTY_HELP: Record<string, string> = {
  * library (verified against NodeLibrary.json). */
 function isItemIdField(key: string): boolean {
   return key === 'ItemId' || key === 'ItemType'
+}
+
+/** Stationeers IC10's Read/Write Device Property nodes' `LogicType` field —
+ * suggestions come from `Game.logicTypeCatalog`, scoped by the node's own
+ * `DeviceType` property and by read/write direction (see
+ * src/games/ic10/deviceLogicTypes.ts). */
+function logicTypeFieldAccess(definitionId: string | undefined, key: string): 'read' | 'write' | undefined {
+  if (key !== 'LogicType') return undefined
+  if (definitionId === 'ic10.device.read') return 'read'
+  if (definitionId === 'ic10.device.write') return 'write'
+  return undefined
 }
 
 /** True for a value like "{myFlag}" or "{bool:myFlag}" — a whole-value
@@ -107,7 +123,7 @@ function VariablePicker({
   )
 }
 
-export function PropertyPanel({ scriptNode, definition, itemList }: PropertyPanelProps) {
+export function PropertyPanel({ scriptNode, definition, itemList, logicTypeCatalog }: PropertyPanelProps) {
   const updateNodeProperty = useGraphStore((s) => s.updateNodeProperty)
   const checkpoint = useGraphStore((s) => s.checkpoint)
   const allNodes = useGraphStore((s) => s.nodes)
@@ -151,6 +167,13 @@ export function PropertyPanel({ scriptNode, definition, itemList }: PropertyPane
         // match and fall back to that emitter's default. Only offer the
         // variable-reference escape hatch where it can actually work.
         const isBooleanCombo = options.length === 2 && options.includes('true') && options.includes('false')
+        const logicTypeAccess = logicTypeFieldAccess(definition?.Id, key)
+        const logicTypeOptions =
+          logicTypeAccess && logicTypeCatalog
+            ? logicTypeCatalog
+                .logicTypesFor(scriptNode.Properties.DeviceType ?? '(any)', logicTypeAccess)
+                .map((name) => ({ id: name, name, category: 'LogicType' }))
+            : undefined
 
         return (
           <label key={key} style={{ display: 'block', marginBottom: 10, fontSize: 12 }}>
@@ -168,6 +191,22 @@ export function PropertyPanel({ scriptNode, definition, itemList }: PropertyPane
                   style={{ width: '100%', boxSizing: 'border-box' }}
                 />
                 <ItemPicker items={itemList} onPick={(id) => updateNodeProperty(scriptNode.Id, key, id)} />
+              </div>
+            ) : logicTypeOptions ? (
+              <div style={{ display: 'flex', gap: 4 }}>
+                <input
+                  type="text"
+                  value={value}
+                  onFocus={checkpoint}
+                  onChange={(e) => updateNodeProperty(scriptNode.Id, key, e.target.value)}
+                  style={{ width: '100%', boxSizing: 'border-box' }}
+                />
+                <ItemPicker
+                  items={logicTypeOptions}
+                  onPick={(id) => updateNodeProperty(scriptNode.Id, key, id)}
+                  label="Pick LogicType"
+                  title="Pick a LogicType valid for the chosen Device Type"
+                />
               </div>
             ) : type === 'multiline' || (type === 'text' && help) ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

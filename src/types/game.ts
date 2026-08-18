@@ -48,6 +48,22 @@ export interface GameItem {
   category: string
 }
 
+/** A total-character-count limit (Space Engineers' Programmable Block
+ * terminal). `amberAt`/`redAt` are soft warning thresholds below `max`. */
+export interface CharLimit {
+  max: number
+  amberAt: number
+  redAt: number
+}
+
+/** A total-line-count + per-line-length limit (Stationeers IC10's 128-line/
+ * 90-char editor). Unlike `CharLimit` this is a hard cap, not a budget —
+ * ScriptPreview derives its own warning threshold at 90% of each max. */
+export interface LineLimit {
+  maxLines: number
+  maxLineLength: number
+}
+
 /** Everything the editor shell needs to run against one target game/
  * language. Each game lives under `src/games/<id>/` and exports exactly
  * one of these from its `index.ts`; `src/games/registry.ts` collects them. */
@@ -72,4 +88,17 @@ export interface Game {
   templates?: GameTemplate[]
   wizards?: GameWizard[]
   itemList?: GameItem[]
+  /** Which size-limit UI ScriptPreview shows, if any — a game may have
+   * neither, either, or (in principle) both. */
+  charLimit?: CharLimit
+  lineLimit?: LineLimit
+  /** Powers a "pick a valid LogicType" suggestion list (Stationeers IC10
+   * today) — a device-scoped alternative to `itemList`'s flat picker, since
+   * which suggestions are valid depends on another property on the same
+   * node (which device type the player says is on that pin) rather than
+   * being one fixed list. UI-only: doesn't affect codegen. */
+  logicTypeCatalog?: {
+    deviceNames: string[]
+    logicTypesFor: (device: string, access: 'read' | 'write') => string[]
+  }
 }

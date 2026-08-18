@@ -99,7 +99,12 @@ function EditorShell({ game }: { game: Game }) {
           }}
         >
           <div style={{ height: propertyHeight, flex: '0 0 auto', borderBottom: '1px solid #374151', minHeight: 0 }}>
-            <PropertyPanel scriptNode={selectedNode} definition={selectedDefinition} itemList={game.itemList} />
+            <PropertyPanel
+              scriptNode={selectedNode}
+              definition={selectedDefinition}
+              itemList={game.itemList}
+              logicTypeCatalog={game.logicTypeCatalog}
+            />
           </div>
           <ResizeHandle axis="y" onMouseDown={onPropertyHandleDown} />
           <div style={{ height: validationHeight, flex: '0 0 auto', borderBottom: '1px solid #374151', minHeight: 0 }}>

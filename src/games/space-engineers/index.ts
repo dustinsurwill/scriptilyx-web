@@ -31,4 +31,6 @@ export const spaceEngineersGame: Game = {
     build: (values, definitionsById) => buildWizardGraph(wizard, values, definitionsById),
   })),
   itemList: inventoryItems,
+  // The programmable block's terminal rejects scripts over 100,000 chars.
+  charLimit: { max: 100_000, amberAt: 80_000, redAt: 95_000 },
 }
