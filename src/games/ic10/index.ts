@@ -2,6 +2,7 @@ import type { Game } from '../../types/game'
 import { nodeDefinitions } from './nodeLibrary'
 import { generateScript } from './codegen/generate'
 import { deviceNames, logicTypeNamesFor } from './deviceLogicTypes'
+import { buildScenarioGraph, scenarioTemplates } from './scenarioTemplates'
 
 export const ic10Game: Game = {
   id: 'ic10',
@@ -12,7 +13,14 @@ export const ic10Game: Game = {
   nodeDefinitions,
   generate: (nodes, connections, options) => generateScript(nodes, connections, options),
   // No minify (already terse/line-based), no remapLegacyGraph (no prior
-  // desktop tool to import from), no templates/wizards/itemList yet.
+  // desktop tool to import from), no wizards/itemList yet.
   lineLimit: { maxLines: 128, maxLineLength: 90 },
   logicTypeCatalog: { deviceNames, logicTypesFor: logicTypeNamesFor },
+  templates: scenarioTemplates.map((template) => ({
+    id: template.id,
+    title: template.title,
+    tier: template.tier,
+    description: template.description,
+    build: (definitionsById) => buildScenarioGraph(template, definitionsById),
+  })),
 }
