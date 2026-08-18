@@ -1,5 +1,7 @@
 # Scriptilyx Web
 
+**[Live site](https://dustinsurwill.github.io/scriptilyx-web/)**
+
 A browser-based, node-graph visual editor for building Space Engineers
 programmable-block scripts. Wire up nodes on a canvas and get a ready-to-paste
 C# script for the in-game Programmable Block.
