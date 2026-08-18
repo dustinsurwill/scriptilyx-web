@@ -1388,6 +1388,40 @@
    "Preview": "Wait {Seconds} seconds"
   },
   {
+   "Id": "logic.switch",
+   "Category": "🧠 Logic",
+   "Title": "Switch",
+   "Description": "Routes to one of several outputs by matching Value against each case's literal, falling through to Default if nothing matches. Add/remove cases in the property panel.",
+   "Search": "switch case match router dispatch dynamic",
+   "ActionType": "Switch",
+   "InputPorts": [
+    "In"
+   ],
+   "OutputPorts": [
+    "Case1",
+    "Case2",
+    "Default"
+   ],
+   "Properties": {
+    "Value": {
+     "Type": "text",
+     "DefaultValue": "",
+     "Options": []
+    },
+    "Case1Value": {
+     "Type": "text",
+     "DefaultValue": "case1",
+     "Options": []
+    },
+    "Case2Value": {
+     "Type": "text",
+     "DefaultValue": "case2",
+     "Options": []
+    }
+   },
+   "Preview": "Switch {Value}"
+  },
+  {
    "Id": "logic.command_router",
    "Category": "🧠 Logic",
    "Title": "Command Router",

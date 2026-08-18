@@ -1,5 +1,5 @@
 import type { ScriptNode } from '../../../types/graph'
-import { interpolatedTextExpr, resolvableNumber } from './factories'
+import { interpolatedTextExpr, resolvableNumber, resolvableText } from './factories'
 import { sanitizeIdentifier, stringLiteral } from './format'
 import type { NodeEmitter } from './types'
 
@@ -101,6 +101,27 @@ export const commandRouterEmitter: NodeEmitter = (node, ctx) => {
     lines.push(`  case ${stringLiteral(argument)}: ${ctx.next(node, port)} break;`)
   }
   lines.push(`  default: ${ctx.next(node, 'unknown')} break;`)
+  lines.push('}')
+  return { kind: 'raw', statements: lines }
+}
+
+/** Routes to one of a user-managed number of `CaseN` outputs by matching
+ * `Value` against each case's literal (`CaseNValue`), falling through to
+ * `Default` if nothing matches — the dynamic-output-count counterpart to
+ * `commandRouterEmitter`'s fixed case set. `node.OutputPorts` is the
+ * per-instance array (mutated by the store's addSwitchCase/removeSwitchCase
+ * actions), not the catalog definition's, so however many cases this
+ * particular node instance has is exactly how many `case` labels get
+ * emitted — see ScriptGraphNode/PropertyPanel for how the port count is
+ * managed on the canvas. */
+export const switchEmitter: NodeEmitter = (node, ctx) => {
+  const value = resolvableText(node, 'Value', ctx)
+  const casePorts = node.OutputPorts.filter((p) => p !== 'Default')
+  const lines: string[] = [`switch (${value}) {`]
+  for (const port of casePorts) {
+    lines.push(`  case ${stringLiteral(prop(node, `${port}Value`))}: ${ctx.next(node, port)} break;`)
+  }
+  lines.push(`  default: ${ctx.next(node, 'Default')} break;`)
   lines.push('}')
   return { kind: 'raw', statements: lines }
 }

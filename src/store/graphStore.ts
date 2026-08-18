@@ -41,6 +41,14 @@ export interface GraphState {
   addNode: (definition: NodeDefinition, position: { x: number; y: number }) => void
   moveNode: (nodeId: string, position: { x: number; y: number }) => void
   updateNodeProperty: (nodeId: string, key: string, value: string) => void
+  /** Appends one more `CaseN`/`CaseNValue` output port to a Switch node
+   * instance (keeping `Default` last) — see PropertyPanel's "manage cases"
+   * control and switchEmitter in src/games/space-engineers/codegen. */
+  addSwitchCase: (nodeId: string) => void
+  /** Removes the highest-numbered `CaseN` output port from a Switch node
+   * instance (a no-op below one case), dropping its `CaseNValue` property
+   * and any wire connected from that port. */
+  removeSwitchCase: (nodeId: string) => void
   deleteNode: (nodeId: string) => void
   deleteConnection: (id: string) => void
   connect: (connection: NodeConnection) => void
@@ -172,6 +180,41 @@ export function createGraphStore(options: CreateGraphStoreOptions) {
           n.Id === nodeId ? { ...n, Properties: { ...n.Properties, [key]: value } } : n,
         ),
       }))
+    },
+
+    addSwitchCase: (nodeId) => {
+      get().checkpoint()
+      set((state) => ({
+        nodes: state.nodes.map((n) => {
+          if (n.Id !== nodeId) return n
+          const caseCount = n.OutputPorts.filter((p) => p !== 'Default').length
+          const newPort = `Case${caseCount + 1}`
+          return {
+            ...n,
+            OutputPorts: [...n.OutputPorts.filter((p) => p !== 'Default'), newPort, 'Default'],
+            Properties: { ...n.Properties, [`${newPort}Value`]: newPort.toLowerCase() },
+          }
+        }),
+      }))
+    },
+
+    removeSwitchCase: (nodeId) => {
+      get().checkpoint()
+      set((state) => {
+        const node = state.nodes.find((n) => n.Id === nodeId)
+        const cases = node?.OutputPorts.filter((p) => p !== 'Default') ?? []
+        if (!node || cases.length <= 1) return state
+        const lastCase = cases[cases.length - 1]
+        const { [`${lastCase}Value`]: _removed, ...restProperties } = node.Properties
+        return {
+          nodes: state.nodes.map((n) =>
+            n.Id === nodeId
+              ? { ...n, OutputPorts: n.OutputPorts.filter((p) => p !== lastCase), Properties: restProperties }
+              : n,
+          ),
+          connections: state.connections.filter((c) => !(c.FromNodeId === nodeId && c.FromPort === lastCase)),
+        }
+      })
     },
 
     deleteNode: (nodeId) => {

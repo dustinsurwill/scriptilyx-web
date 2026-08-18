@@ -12,6 +12,7 @@ import {
   runEverySecondsEmitter,
   sectionMethodName,
   stopScriptEmitter,
+  switchEmitter,
   waitSecondsEmitter,
 } from './logicEmitters'
 import { expressionOf, fakeContext, makeNode, statementsOf } from './testUtils'
@@ -145,6 +146,43 @@ describe('commandRouterEmitter', () => {
     expect(src).toContain('case "startup":')
     expect(src).not.toContain('case "":')
     expect(src).toContain('default:')
+  })
+})
+
+describe('switchEmitter', () => {
+  it('emits one case per output port actually on this node instance', () => {
+    const node = makeNode({
+      ActionType: 'Switch',
+      OutputPorts: ['Case1', 'Case2', 'Case3', 'Default'],
+      Properties: { Value: 'startup', Case1Value: 'startup', Case2Value: 'shutdown', Case3Value: 'status' },
+    })
+    const emit = switchEmitter(node, fakeContext())
+    const src = statementsOf(emit).join('\n')
+    expect(src).toContain('switch ("startup") {')
+    expect(src).toContain('case "startup": NEXT(Case1);')
+    expect(src).toContain('case "shutdown": NEXT(Case2);')
+    expect(src).toContain('case "status": NEXT(Case3);')
+    expect(src).toContain('default: NEXT(Default);')
+  })
+
+  it('follows however many cases the instance has been grown/shrunk to, not a fixed set', () => {
+    const twoCase = makeNode({
+      ActionType: 'Switch',
+      OutputPorts: ['Case1', 'Default'],
+      Properties: { Value: 'x', Case1Value: 'a' },
+    })
+    const src = statementsOf(switchEmitter(twoCase, fakeContext())).join('\n')
+    expect(src.match(/case /g)).toHaveLength(1)
+  })
+
+  it('reads Value from a {variable} reference instead of a fixed literal', () => {
+    const node = makeNode({
+      ActionType: 'Switch',
+      OutputPorts: ['Case1', 'Default'],
+      Properties: { Value: '{mode}', Case1Value: 'a' },
+    })
+    const emit = switchEmitter(node, fakeContext())
+    expect(statementsOf(emit).join('\n')).toContain('switch (GetText("mode")) {')
   })
 })
 

@@ -125,6 +125,8 @@ function VariablePicker({
 
 export function PropertyPanel({ scriptNode, definition, itemList, logicTypeCatalog }: PropertyPanelProps) {
   const updateNodeProperty = useGraphStore((s) => s.updateNodeProperty)
+  const addSwitchCase = useGraphStore((s) => s.addSwitchCase)
+  const removeSwitchCase = useGraphStore((s) => s.removeSwitchCase)
   const checkpoint = useGraphStore((s) => s.checkpoint)
   const allNodes = useGraphStore((s) => s.nodes)
   const registry = useMemo(() => buildVariableRegistry(allNodes), [allNodes])
@@ -153,6 +155,24 @@ export function PropertyPanel({ scriptNode, definition, itemList, logicTypeCatal
       </h2>
       {definition?.Description && (
         <p style={{ fontSize: 12, opacity: 0.75, margin: '0 0 12px', lineHeight: 1.4 }}>{definition.Description}</p>
+      )}
+      {definition?.ActionType === 'Switch' && (
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 12 }}>
+          <span style={{ fontSize: 12, opacity: 0.85 }}>
+            {scriptNode.OutputPorts.filter((p) => p !== 'Default').length} case
+            {scriptNode.OutputPorts.filter((p) => p !== 'Default').length === 1 ? '' : 's'}
+          </span>
+          <button type="button" onClick={() => addSwitchCase(scriptNode.Id)}>
+            + Add Case
+          </button>
+          <button
+            type="button"
+            disabled={scriptNode.OutputPorts.filter((p) => p !== 'Default').length <= 1}
+            onClick={() => removeSwitchCase(scriptNode.Id)}
+          >
+            − Remove Case
+          </button>
+        </div>
       )}
       {Object.entries(scriptNode.Properties).map(([key, value]) => {
         const propDef = definition?.Properties[key]

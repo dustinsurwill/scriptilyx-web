@@ -201,6 +201,18 @@ export function resolvableNumber(node: ScriptNode, key: string, ctx: EmitContext
   return numberLiteral(raw)
 }
 
+/** Same as `resolvableBool`, for a whole-value text property (Switch's
+ * `Value`, the thing being matched against each case) — a fixed string
+ * literal, or a `{myVar}` reference read back with `GetText`. */
+export function resolvableText(node: ScriptNode, key: string, ctx: EmitContext): string {
+  const raw = prop(node, key)
+  if (isPureInterpolation(raw)) {
+    ctx.useHelper('Vars')
+    return resolveInterpolationHole(raw.trim().slice(1, -1), ctx, 'text')
+  }
+  return stringLiteral(raw)
+}
+
 // ---------------------------------------------------------------------------
 // Generic terminal-block property access — works for every block/PB feature
 // registered in the terminal system (SE's ModAPI `GetValue<T>`/`SetValue<T>`/
