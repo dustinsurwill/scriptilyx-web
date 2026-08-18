@@ -1,6 +1,7 @@
 import type { Game } from '../../types/game'
 import { nodeDefinitions } from './nodeLibrary'
 import { generateScript } from './codegen/generate'
+import { deviceNames, logicTypeNamesFor } from './deviceLogicTypes'
 
 export const ic10Game: Game = {
   id: 'ic10',
@@ -13,4 +14,5 @@ export const ic10Game: Game = {
   // No minify (already terse/line-based), no remapLegacyGraph (no prior
   // desktop tool to import from), no templates/wizards/itemList yet.
   lineLimit: { maxLines: 128, maxLineLength: 90 },
+  logicTypeCatalog: { deviceNames, logicTypesFor: logicTypeNamesFor },
 }

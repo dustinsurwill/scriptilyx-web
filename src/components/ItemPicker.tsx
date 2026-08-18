@@ -14,16 +14,26 @@ const buttonStyle: CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
-/** "Pick Item ID" popover for ItemId/ItemType text fields (conveyor sorter
- * filters, inventory checks) — referenced by name in NodeLibrary.json's
- * own Description text for the sorter nodes ("Use the Pick Item ID button
- * ... to choose from a searchable item list"). Players see a display name
- * in-game ("Iron Ore"), never the MyObjectBuilder_Ore/Iron-shaped id the
- * field actually stores, so this searches src/data/inventoryItems.ts by
- * name and inserts the id on pick. The field stays plain free text
- * underneath — this is a convenience, not a closed dropdown, since the
- * curated list isn't exhaustive and can't know about modded items. */
-export function ItemPicker({ items, onPick }: { items: GameItem[]; onPick: (id: string) => void }) {
+/** Generic searchable/grouped-by-category picker popover for a free-text
+ * field backed by a suggestion list — originally built for Space
+ * Engineers' ItemId/ItemType fields (players see a display name in-game,
+ * "Iron Ore", never the MyObjectBuilder_Ore/Iron-shaped id the field
+ * actually stores; see src/games/space-engineers/inventoryItems.ts) and
+ * reused as-is for Stationeers IC10's LogicType suggestions (see
+ * src/games/ic10/deviceLogicTypes.ts) — same shape, different data. The
+ * field stays plain free text underneath in both cases; this is a
+ * convenience, not a closed dropdown, since neither list is exhaustive. */
+export function ItemPicker({
+  items,
+  onPick,
+  label = 'Pick Item ID',
+  title = 'Pick an item by its in-game name instead of typing its id',
+}: {
+  items: GameItem[]
+  onPick: (id: string) => void
+  label?: string
+  title?: string
+}) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
@@ -58,9 +68,9 @@ export function ItemPicker({ items, onPick }: { items: GameItem[]; onPick: (id: 
         type="button"
         style={buttonStyle}
         onClick={() => setOpen((v) => !v)}
-        title="Pick an item by its in-game name instead of typing its id"
+        title={title}
       >
-        Pick Item ID
+        {label}
       </button>
       {open && (
         <div

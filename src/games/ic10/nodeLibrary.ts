@@ -1,4 +1,7 @@
 import type { NodeDefinition } from '../../types/graph'
+import { deviceNames } from './deviceLogicTypes'
+
+const DEVICE_TYPE_OPTIONS = ['(any)', ...deviceNames]
 
 /** Stationeers IC10 node catalog — hand-authored from IC10's own public
  * instruction-set documentation (see ../../../docs/ic10-api-notes.md for
@@ -72,6 +75,11 @@ export const nodeDefinitions: NodeDefinition[] = [
     OutputPorts: ['Next'],
     Properties: {
       Device: { Type: 'combo', DefaultValue: 'd0', Options: ['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'db'] },
+      // UI-only hint (which device the player expects on this pin) so the
+      // LogicType picker can suggest the right names — doesn't affect
+      // codegen, since the compiled instruction only ever sees Device and
+      // LogicType. See src/games/ic10/deviceLogicTypes.ts.
+      DeviceType: { Type: 'combo', DefaultValue: '(any)', Options: DEVICE_TYPE_OPTIONS },
       LogicType: { Type: 'text', DefaultValue: 'On', Options: [] },
       Name: { Type: 'text', DefaultValue: 'value', Options: [] },
     },
@@ -89,6 +97,7 @@ export const nodeDefinitions: NodeDefinition[] = [
     OutputPorts: ['Next'],
     Properties: {
       Device: { Type: 'combo', DefaultValue: 'd0', Options: ['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'db'] },
+      DeviceType: { Type: 'combo', DefaultValue: '(any)', Options: DEVICE_TYPE_OPTIONS },
       LogicType: { Type: 'text', DefaultValue: 'On', Options: [] },
       Value: { Type: 'text', DefaultValue: '1', Options: [] },
     },

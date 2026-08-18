@@ -92,4 +92,13 @@ export interface Game {
    * neither, either, or (in principle) both. */
   charLimit?: CharLimit
   lineLimit?: LineLimit
+  /** Powers a "pick a valid LogicType" suggestion list (Stationeers IC10
+   * today) — a device-scoped alternative to `itemList`'s flat picker, since
+   * which suggestions are valid depends on another property on the same
+   * node (which device type the player says is on that pin) rather than
+   * being one fixed list. UI-only: doesn't affect codegen. */
+  logicTypeCatalog?: {
+    deviceNames: string[]
+    logicTypesFor: (device: string, access: 'read' | 'write') => string[]
+  }
 }
