@@ -5,6 +5,17 @@
 
 ## Status
 
+**Milestone 7.1 done (merged in #8).** Templates (`src/data/
+scenarioTemplates.ts`, `TemplatesMenu.tsx`) — 4 static worked-example
+graphs laid out with a branch-aware layered layout (`src/data/
+graphAssembly.ts`) — and Wizards (`src/data/wizardTemplates.ts`,
+`WizardsMenu.tsx`/`WizardModal.tsx`) — a separate, modal-driven system for
+Airlock Cycler, Cargo Full Alert, and Auto Cockpit Lights — plus a
+searchable item picker (`src/data/inventoryItems.ts`, `ItemPicker.tsx`)
+for the `ItemId`/`ItemType` fields. Also added a native catalog node,
+`Cargo Group Threshold`, for the cargo wizard's Group option. See
+"Templates, Wizards, item picker" below for the full design writeup.
+
 **Milestone 7.2 done (merged in #7).** Cleaned up the native node catalog
 (346 → 280 node definitions across seven merge passes — on/off preset
 pairs, Above/Below threshold pairs, Wheel bool presets, number-variable
@@ -30,8 +41,7 @@ node).
 - [x] Milestone 4 — Codegen (merged in #4)
 - [x] Milestone 5 — Minify (merged in #5)
 - [x] Milestone 6 — Persistence (merged in #6)
-- [ ] Milestone 7.1 — Stretch: templates, wizards, item picker (built on
-      `milestone-7.1-wizards-and-packs`, not yet merged)
+- [x] Milestone 7.1 — Stretch: templates, wizards, item picker (merged in #8)
 - [x] Milestone 7.2 — Stretch: cleaned-up native node catalog + `.segraph`
       import (merged in #7)
 - [ ] Milestone 7.3 — Stretch: `.segraph` export (legacy-compatible), may end
