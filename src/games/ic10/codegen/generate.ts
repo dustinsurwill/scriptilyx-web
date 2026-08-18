@@ -22,6 +22,18 @@ const DECLARING_ACTION_TYPES = new Set([
   'BatchReadDevice', 'BatchReadDeviceSlot', 'Pop', 'Peek', 'GetStack', 'GetStackById',
 ])
 
+/** One reachable node's compiled output: an optional debug comment, the
+ * `Lx:` label line, and its instruction line(s) — kept separate (rather
+ * than flattened straight into the final line array) so a later pass can
+ * drop the label if nothing ever jumps to it, and drop a trailing
+ * unconditional jump if the node it targets already falls through
+ * naturally (see elideRedundantControlFlow). */
+interface Block {
+  node: ScriptNode
+  comment?: string
+  content: string[]
+}
+
 function label(node: ScriptNode): string {
   return `L${node.Number}`
 }
@@ -126,6 +138,39 @@ function resolveValue(raw: string, declared: Set<string>, context: string, warni
   return value
 }
 
+/** IC10 has no implicit fallthrough concept of its own — every node here
+ * still compiles as if it needs its own label and an explicit jump to
+ * whatever comes next. But physically, a block emitted immediately after
+ * the block it jumps to doesn't need that jump at all (the processor just
+ * runs into it), and a label nothing ever jumps to doesn't need to exist.
+ * This trims both, purely as a peephole pass over the already-generated
+ * blocks — it changes nothing about *which* instructions run, only how
+ * many label/jump lines it costs to express that, which matters given
+ * IC10's hard 128-line cap. Node emission order is left as-is (the order
+ * nodes were authored/wired in, typically already close to execution
+ * order for hand-built graphs) rather than reordered for maximum
+ * adjacency, so this can't change what a jump resolves to — only whether
+ * that jump line still needs to be written out. */
+function elideRedundantControlFlow(blocks: Block[]): void {
+  for (let i = 0; i < blocks.length - 1; i++) {
+    const content = blocks[i].content
+    const last = content[content.length - 1]
+    if (last !== undefined && last === `j ${label(blocks[i + 1].node)}`) {
+      content.pop()
+    }
+  }
+}
+
+function usedLabels(blocks: Block[]): Set<string> {
+  const used = new Set<string>()
+  for (const block of blocks) {
+    for (const line of block.content) {
+      for (const match of line.matchAll(/\bL\d+\b/g)) used.add(match[0])
+    }
+  }
+  return used
+}
+
 export function generateScript(
   nodes: ScriptNode[],
   connections: NodeConnection[],
@@ -150,7 +195,7 @@ export function generateScript(
   const { aliasLines, declared, warnings: registerWarnings } = allocateRegisters(reachable)
   warnings.push(...registerWarnings)
 
-  const lines: string[] = [...aliasLines]
+  const blocks: Block[] = []
 
   for (const node of reachable) {
     const ctx = `${node.Title} #${node.Number}`
@@ -158,101 +203,99 @@ export function generateScript(
       resolveValue(node.Properties[key] ?? fallback, declared, `${ctx} ${label}`, warnings)
     const target = (node.Properties.Name ?? '').trim() || 'r15'
     const next = () => `j ${label(targetOf(node, 'Next'))}`
-
-    if (options.professionalComments) lines.push(`# #${node.Number} ${node.Title}`)
-    lines.push(`${label(node)}:`)
+    const content: string[] = []
 
     switch (node.ActionType) {
       case 'Start': {
-        lines.push(`j ${label(targetOf(node, 'Next'))}`)
+        content.push(`j ${label(targetOf(node, 'Next'))}`)
         break
       }
       case 'Sleep': {
-        lines.push(`sleep ${resolve('Seconds', 'Seconds', '1')}`)
-        lines.push(next())
+        content.push(`sleep ${resolve('Seconds', 'Seconds', '1')}`)
+        content.push(next())
         break
       }
       case 'Yield': {
-        lines.push('yield')
-        lines.push(next())
+        content.push('yield')
+        content.push(next())
         break
       }
       case 'LoopToStart': {
-        lines.push(`j ${label(start)}`)
+        content.push(`j ${label(start)}`)
         break
       }
       case 'CallSubroutine': {
-        lines.push(`jal ${label(targetOf(node, 'Next'))}`)
+        content.push(`jal ${label(targetOf(node, 'Next'))}`)
         break
       }
       case 'ReturnFromSubroutine': {
-        lines.push('j ra')
+        content.push('j ra')
         break
       }
 
       case 'ReadDevice': {
         const device = node.Properties.Device ?? 'd0'
         const logicType = (node.Properties.LogicType ?? 'On').trim()
-        lines.push(`l ${target} ${device} ${logicType}`)
-        lines.push(next())
+        content.push(`l ${target} ${device} ${logicType}`)
+        content.push(next())
         break
       }
       case 'WriteDevice': {
         const device = node.Properties.Device ?? 'd0'
         const logicType = (node.Properties.LogicType ?? 'On').trim()
-        lines.push(`s ${device} ${logicType} ${resolve('Value', 'Value')}`)
-        lines.push(next())
+        content.push(`s ${device} ${logicType} ${resolve('Value', 'Value')}`)
+        content.push(next())
         break
       }
       case 'ReadDeviceById': {
         const deviceId = resolve('DeviceId', 'Device ID', 'id')
         const logicType = (node.Properties.LogicType ?? 'On').trim()
-        lines.push(`ld ${target} ${deviceId} ${logicType}`)
-        lines.push(next())
+        content.push(`ld ${target} ${deviceId} ${logicType}`)
+        content.push(next())
         break
       }
       case 'WriteDeviceById': {
         const deviceId = resolve('DeviceId', 'Device ID', 'id')
         const logicType = (node.Properties.LogicType ?? 'On').trim()
-        lines.push(`sd ${deviceId} ${logicType} ${resolve('Value', 'Value')}`)
-        lines.push(next())
+        content.push(`sd ${deviceId} ${logicType} ${resolve('Value', 'Value')}`)
+        content.push(next())
         break
       }
       case 'IfDeviceConnected': {
         const device = node.Properties.Device ?? 'd0'
         const callOnTrue = (node.Properties.CallOnTrue ?? 'false') === 'true'
         const opcode = 'bdse' + (callOnTrue ? 'al' : '')
-        lines.push(`${opcode} ${device} ${label(targetOf(node, 'True'))}`)
-        lines.push(`j ${label(targetOf(node, 'False'))}`)
+        content.push(`${opcode} ${device} ${label(targetOf(node, 'True'))}`)
+        content.push(`j ${label(targetOf(node, 'False'))}`)
         break
       }
       case 'DeviceConnectedValue': {
         const device = node.Properties.Device ?? 'd0'
-        lines.push(`sdse ${target} ${device}`)
-        lines.push(next())
+        content.push(`sdse ${target} ${device}`)
+        content.push(next())
         break
       }
       case 'CheckDeviceLogicType': {
         const device = node.Properties.Device ?? 'd0'
         const logicType = (node.Properties.LogicType ?? 'On').trim()
         const opcode = (node.Properties.Mode ?? 'Load') === 'Store' ? 'bdnvs' : 'bdnvl'
-        lines.push(`${opcode} ${device} ${logicType} ${label(targetOf(node, 'NotSupported'))}`)
-        lines.push(`j ${label(targetOf(node, 'Supported'))}`)
+        content.push(`${opcode} ${device} ${logicType} ${label(targetOf(node, 'NotSupported'))}`)
+        content.push(`j ${label(targetOf(node, 'Supported'))}`)
         break
       }
       case 'ReadDeviceReagent': {
         const device = node.Properties.Device ?? 'd0'
         const modeNum = REAGENT_MODE_NUM[node.Properties.ReagentMode ?? 'Contents'] ?? 0
         const reagent = hashExpr((node.Properties.ReagentName ?? '').trim())
-        lines.push(`lr ${target} ${device} ${modeNum} ${reagent}`)
-        lines.push(next())
+        content.push(`lr ${target} ${device} ${modeNum} ${reagent}`)
+        content.push(next())
         break
       }
       case 'ReagentItemHash': {
         const device = node.Properties.Device ?? 'd0'
         const reagent = hashExpr((node.Properties.ReagentName ?? '').trim())
-        lines.push(`rmap ${target} ${device} ${reagent}`)
-        lines.push(next())
+        content.push(`rmap ${target} ${device} ${reagent}`)
+        content.push(next())
         break
       }
 
@@ -269,20 +312,20 @@ export function generateScript(
         const logicType = (node.Properties.LogicType ?? 'On').trim()
         if (node.ActionType === 'BatchReadDevice') {
           const batchMode = BATCH_MODE_NUM[node.Properties.BatchMode ?? 'Average'] ?? 0
-          lines.push(
+          content.push(
             deviceNameFilter
               ? `lbn ${target} ${hash ?? 0} ${hashExpr(deviceNameFilter)} ${logicType} ${batchMode}`
               : `lb ${target} ${hash ?? 0} ${logicType} ${batchMode}`,
           )
         } else {
           const value = resolve('Value', 'Value')
-          lines.push(
+          content.push(
             deviceNameFilter
               ? `sbn ${hash ?? 0} ${hashExpr(deviceNameFilter)} ${logicType} ${value}`
               : `sb ${hash ?? 0} ${logicType} ${value}`,
           )
         }
-        lines.push(next())
+        content.push(next())
         break
       }
       case 'BatchReadDeviceSlot': {
@@ -294,12 +337,12 @@ export function generateScript(
         const slotIndex = resolve('SlotIndex', 'Slot Index', '0')
         const logicSlotType = (node.Properties.LogicSlotType ?? 'Occupied').trim()
         const batchMode = BATCH_MODE_NUM[node.Properties.BatchMode ?? 'Average'] ?? 0
-        lines.push(
+        content.push(
           deviceNameFilter
             ? `lbns ${target} ${hash ?? 0} ${hashExpr(deviceNameFilter)} ${slotIndex} ${logicSlotType} ${batchMode}`
             : `lbs ${target} ${hash ?? 0} ${slotIndex} ${logicSlotType} ${batchMode}`,
         )
-        lines.push(next())
+        content.push(next())
         break
       }
       case 'BatchWriteDeviceSlot': {
@@ -308,52 +351,52 @@ export function generateScript(
         if (hash === undefined) warnings.push(`${ctx}: no known prefab hash for device type "${deviceType}".`)
         const slotIndex = resolve('SlotIndex', 'Slot Index', '0')
         const logicSlotType = (node.Properties.LogicSlotType ?? 'Occupied').trim()
-        lines.push(`sbs ${hash ?? 0} ${slotIndex} ${logicSlotType} ${resolve('Value', 'Value')}`)
-        lines.push(next())
+        content.push(`sbs ${hash ?? 0} ${slotIndex} ${logicSlotType} ${resolve('Value', 'Value')}`)
+        content.push(next())
         break
       }
       case 'ReadSlot': {
         const device = node.Properties.Device ?? 'd0'
         const slotIndex = resolve('SlotIndex', 'Slot Index', '0')
         const logicSlotType = (node.Properties.LogicSlotType ?? 'Occupied').trim()
-        lines.push(`ls ${target} ${device} ${slotIndex} ${logicSlotType}`)
-        lines.push(next())
+        content.push(`ls ${target} ${device} ${slotIndex} ${logicSlotType}`)
+        content.push(next())
         break
       }
       case 'WriteSlot': {
         const device = node.Properties.Device ?? 'd0'
         const slotIndex = resolve('SlotIndex', 'Slot Index', '0')
         const logicSlotType = (node.Properties.LogicSlotType ?? 'Occupied').trim()
-        lines.push(`ss ${device} ${slotIndex} ${logicSlotType} ${resolve('Value', 'Value')}`)
-        lines.push(next())
+        content.push(`ss ${device} ${slotIndex} ${logicSlotType} ${resolve('Value', 'Value')}`)
+        content.push(next())
         break
       }
 
       case 'SetNumber': {
-        lines.push(`move ${target} ${resolve('Value', 'Value')}`)
-        lines.push(next())
+        content.push(`move ${target} ${resolve('Value', 'Value')}`)
+        content.push(next())
         break
       }
       case 'NumberMath': {
         const operator = node.Properties.Operator ?? 'Add'
         const opcode = NUMBER_MATH_OPCODE[operator] ?? 'add'
         if (NULLARY_MATH_OPS.has(operator)) {
-          lines.push(`${opcode} ${target}`)
+          content.push(`${opcode} ${target}`)
         } else if (UNARY_MATH_OPS.has(operator)) {
-          lines.push(`${opcode} ${target} ${resolve('ValueA', 'Value A')}`)
+          content.push(`${opcode} ${target} ${resolve('ValueA', 'Value A')}`)
         } else if (TERNARY_MATH_OPS.has(operator)) {
-          lines.push(`${opcode} ${target} ${resolve('ValueA', 'Value A')} ${resolve('ValueB', 'Value B')} ${resolve('ValueC', 'Value C')}`)
+          content.push(`${opcode} ${target} ${resolve('ValueA', 'Value A')} ${resolve('ValueB', 'Value B')} ${resolve('ValueC', 'Value C')}`)
         } else {
-          lines.push(`${opcode} ${target} ${resolve('ValueA', 'Value A')} ${resolve('ValueB', 'Value B')}`)
+          content.push(`${opcode} ${target} ${resolve('ValueA', 'Value A')} ${resolve('ValueB', 'Value B')}`)
         }
-        lines.push(next())
+        content.push(next())
         break
       }
       case 'Select': {
-        lines.push(
+        content.push(
           `select ${target} ${resolve('Condition', 'Condition')} ${resolve('IfTrue', 'If True', '1')} ${resolve('IfFalse', 'If False')}`,
         )
-        lines.push(next())
+        content.push(next())
         break
       }
       case 'Compare': {
@@ -363,85 +406,101 @@ export function generateScript(
         const trueLabel = label(targetOf(node, 'True'))
         const falseLabel = label(targetOf(node, 'False'))
         if (operator === 'IsNaN') {
-          lines.push(`bnan ${a} ${trueLabel}`)
+          content.push(`bnan ${a} ${trueLabel}`)
         } else if (operator === 'ApproxEqual' || operator === 'NotApproxEqual') {
           const base = operator === 'ApproxEqual' ? 'bap' : 'bna'
           const b = resolve('ValueB', 'Value B')
           const c = resolve('ValueC', 'Value C (tolerance)', '0.001')
           const isZero = b === '0'
           const opcode = base + (isZero ? 'z' : '') + (callOnTrue ? 'al' : '')
-          lines.push(isZero ? `${opcode} ${a} ${c} ${trueLabel}` : `${opcode} ${a} ${b} ${c} ${trueLabel}`)
+          content.push(isZero ? `${opcode} ${a} ${c} ${trueLabel}` : `${opcode} ${a} ${b} ${c} ${trueLabel}`)
         } else {
           const base = COMPARE_BASE_OPCODE[operator] ?? 'beq'
           const b = resolve('ValueB', 'Value B')
           const isZero = b === '0'
           const opcode = base + (isZero ? 'z' : '') + (callOnTrue ? 'al' : '')
-          lines.push(isZero ? `${opcode} ${a} ${trueLabel}` : `${opcode} ${a} ${b} ${trueLabel}`)
+          content.push(isZero ? `${opcode} ${a} ${trueLabel}` : `${opcode} ${a} ${b} ${trueLabel}`)
         }
-        lines.push(`j ${falseLabel}`)
+        content.push(`j ${falseLabel}`)
         break
       }
 
       case 'Push': {
-        lines.push(`push ${resolve('Value', 'Value')}`)
-        lines.push(next())
+        content.push(`push ${resolve('Value', 'Value')}`)
+        content.push(next())
         break
       }
       case 'Pop': {
-        lines.push(`pop ${target}`)
-        lines.push(next())
+        content.push(`pop ${target}`)
+        content.push(next())
         break
       }
       case 'Peek': {
-        lines.push(`peek ${target}`)
-        lines.push(next())
+        content.push(`peek ${target}`)
+        content.push(next())
         break
       }
       case 'Poke': {
-        lines.push(`poke ${resolve('Address', 'Address', '0')} ${resolve('Value', 'Value')}`)
-        lines.push(next())
+        content.push(`poke ${resolve('Address', 'Address', '0')} ${resolve('Value', 'Value')}`)
+        content.push(next())
         break
       }
       case 'GetStack': {
         const device = node.Properties.Device ?? 'db'
-        lines.push(`get ${target} ${device} ${resolve('Address', 'Address', '0')}`)
-        lines.push(next())
+        content.push(`get ${target} ${device} ${resolve('Address', 'Address', '0')}`)
+        content.push(next())
         break
       }
       case 'GetStackById': {
         const deviceId = resolve('DeviceId', 'Device ID', 'id')
-        lines.push(`getd ${target} ${deviceId} ${resolve('Address', 'Address', '0')}`)
-        lines.push(next())
+        content.push(`getd ${target} ${deviceId} ${resolve('Address', 'Address', '0')}`)
+        content.push(next())
         break
       }
       case 'PutStack': {
         const device = node.Properties.Device ?? 'db'
-        lines.push(`put ${device} ${resolve('Address', 'Address', '0')} ${resolve('Value', 'Value')}`)
-        lines.push(next())
+        content.push(`put ${device} ${resolve('Address', 'Address', '0')} ${resolve('Value', 'Value')}`)
+        content.push(next())
         break
       }
       case 'PutStackById': {
         const deviceId = resolve('DeviceId', 'Device ID', 'id')
-        lines.push(`putd ${deviceId} ${resolve('Address', 'Address', '0')} ${resolve('Value', 'Value')}`)
-        lines.push(next())
+        content.push(`putd ${deviceId} ${resolve('Address', 'Address', '0')} ${resolve('Value', 'Value')}`)
+        content.push(next())
         break
       }
       case 'ClearStack': {
-        lines.push(`clr ${node.Properties.Device ?? 'db'}`)
-        lines.push(next())
+        content.push(`clr ${node.Properties.Device ?? 'db'}`)
+        content.push(next())
         break
       }
       case 'ClearStackById': {
-        lines.push(`clrd ${resolve('DeviceId', 'Device ID', 'id')}`)
-        lines.push(next())
+        content.push(`clrd ${resolve('DeviceId', 'Device ID', 'id')}`)
+        content.push(next())
         break
       }
 
       default: {
-        lines.push(`# TODO codegen: ${node.ActionType} ("${node.Title}") not yet implemented.`)
-        lines.push(`j ${label(start)}`)
+        content.push(`# TODO codegen: ${node.ActionType} ("${node.Title}") not yet implemented.`)
+        content.push(`j ${label(start)}`)
       }
     }
+
+    blocks.push({
+      node,
+      comment: options.professionalComments ? `# #${node.Number} ${node.Title}` : undefined,
+      content,
+    })
+  }
+
+  elideRedundantControlFlow(blocks)
+  const used = usedLabels(blocks)
+
+  const lines: string[] = [...aliasLines]
+  for (const block of blocks) {
+    if (block.comment) lines.push(block.comment)
+    if (used.has(label(block.node))) lines.push(`${label(block.node)}:`)
+    lines.push(...block.content)
   }
 
   if (lines.length > MAX_LINES) {

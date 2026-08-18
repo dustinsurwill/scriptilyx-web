@@ -53,15 +53,17 @@ describe('generateScript', () => {
 
     const { source, warnings } = generateScript(nodes, connections)
     expect(warnings).toEqual([])
+    // Read and Write both fall straight through to the node physically
+    // next in the script, so their labels are never jumped to and their
+    // trailing jumps are redundant — both get elided. Only the loop-back
+    // to Start (write's Next is unconnected) needs a real jump, and only
+    // Start's label is still referenced (by that jump), so it's the only
+    // label kept.
     expect(source).toBe(
       [
         'alias temp r0',
         `L${start.Number}:`,
-        `j L${read.Number}`,
-        `L${read.Number}:`,
         'l temp d0 Temperature',
-        `j L${write.Number}`,
-        `L${write.Number}:`,
         's d1 Setting temp',
         `j L${start.Number}`,
       ].join('\n'),
@@ -394,5 +396,72 @@ describe('Reagents', () => {
     const rmap = node({ ActionType: 'ReagentItemHash', Properties: { Device: 'd0', ReagentName: 'Iron', Name: 'itemHash' } })
     const { source } = generateScript(...chain(rmap))
     expect(source).toContain('rmap itemHash d0 HASH("Iron")')
+  })
+})
+
+describe('Redundant label/jump elision', () => {
+  it('drops a trailing jump whose target already falls through as the next block', () => {
+    const yield1 = node({ ActionType: 'Yield' })
+    const yield2 = node({ ActionType: 'Yield' })
+    const [nodes, connections] = chain(yield1, yield2)
+    const start = nodes[0]
+    const { source } = generateScript(nodes, connections)
+    // Start's jump to yield1, and yield1's jump to yield2, are both
+    // redundant (each target is emitted immediately after it) and should
+    // be gone entirely — only yield2's loop back to Start (not adjacent)
+    // survives, along with Start's now-sole-surviving label.
+    expect(source).not.toContain(`j L${yield1.Number}`)
+    expect(source).not.toContain(`j L${yield2.Number}`)
+    expect(source.split('\n')).toEqual([`L${start.Number}:`, 'yield', 'yield', `j L${start.Number}`])
+  })
+
+  it('keeps a jump whose target is not physically next', () => {
+    const yield1 = node({ ActionType: 'Yield' })
+    const sleep = node({ ActionType: 'Sleep', Properties: { Seconds: '1' } })
+    const [nodes, connections] = chain(yield1, sleep)
+    // Rewire so yield1 jumps back past sleep to itself instead of falling
+    // through to it — not physically adjacent, so the jump must stay.
+    const start = nodes[0]
+    connections.length = 0
+    connections.push(wire(start, 'Next', yield1), wire(yield1, 'Next', start))
+    const { source } = generateScript(nodes, connections)
+    expect(source).toContain(`j L${start.Number}`)
+  })
+
+  it('drops a label nothing ever jumps to', () => {
+    const a = node({ ActionType: 'Yield' })
+    const b = node({ ActionType: 'Yield' })
+    const [nodes, connections] = chain(a, b)
+    const start = nodes[0]
+    const { source } = generateScript(nodes, connections)
+    // Nothing branches to a or b directly (both are pure fallthrough), and
+    // the only remaining jump targets Start, so a's/b's labels should be
+    // absent while Start's is kept.
+    expect(source).not.toMatch(new RegExp(`^L${a.Number}:$`, 'm'))
+    expect(source).not.toMatch(new RegExp(`^L${b.Number}:$`, 'm'))
+    expect(source).toMatch(new RegExp(`^L${start.Number}:$`, 'm'))
+  })
+
+  it('a Compare branch that is physically next needs no jump, the far branch still does', () => {
+    const compare = node({
+      ActionType: 'Compare',
+      OutputPorts: ['True', 'False'],
+      Properties: { ValueA: '5', Operator: 'GreaterThan', ValueB: '2' },
+    })
+    const onFalse = node({ ActionType: 'Yield' })
+    const onTrue = node({ ActionType: 'Yield' })
+    const [nodes] = chain(compare)
+    const start = nodes[0]
+    const connections = [
+      wire(start, 'Next', compare),
+      wire(compare, 'False', onFalse),
+      wire(compare, 'True', onTrue),
+    ]
+    const { source } = generateScript([...nodes, onFalse, onTrue], connections)
+    // onFalse is emitted immediately after compare, so the unconditional
+    // "j falseLabel" that used to always follow the branch is now gone —
+    // only the conditional branch to True remains.
+    expect(source).toContain(`bgt 5 2 L${onTrue.Number}`)
+    expect(source).not.toContain(`j L${onFalse.Number}`)
   })
 })
