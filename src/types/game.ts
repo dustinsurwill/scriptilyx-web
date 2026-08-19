@@ -48,6 +48,21 @@ export interface GameItem {
   category: string
 }
 
+/** An optional, player-installed extension to a game's node catalog (e.g. the
+ * CC:Tweaked "Advanced Peripherals" mod) — its nodes only make sense if the
+ * player actually has the addon installed, so the editor gates them behind a
+ * palette toggle rather than always showing them. Codegen doesn't need to
+ * know an addon's nodes are special: they're registered as ordinary
+ * `ActionType`s in the same emitter table as the game's base nodes, so a
+ * graph that already uses one keeps generating correctly even if the addon
+ * toggle is later switched off. */
+export interface GameAddon {
+  id: string
+  label: string
+  description: string
+  nodeDefinitions: NodeDefinition[]
+}
+
 /** A total-character-count limit (Space Engineers' Programmable Block
  * terminal). `amberAt`/`redAt` are soft warning thresholds below `max`. */
 export interface CharLimit {
@@ -88,6 +103,9 @@ export interface Game {
   templates?: GameTemplate[]
   wizards?: GameWizard[]
   itemList?: GameItem[]
+  /** Optional installable node-catalog extensions (see `GameAddon`). Only
+   * games with real player-installed addon mods set this. */
+  addons?: GameAddon[]
   /** Which size-limit UI ScriptPreview shows, if any — a game may have
    * neither, either, or (in principle) both. */
   charLimit?: CharLimit

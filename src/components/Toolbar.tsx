@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, CSSProperties } from 'react'
-import type { GraphSaveData } from '../types/graph'
+import type { GraphSaveData, NodeDefinition } from '../types/graph'
 import type { Game } from '../types/game'
 import { useGraphStore } from '../store/graphStoreContext'
 import { useGeneratedScript } from '../hooks/useGeneratedScript'
@@ -23,7 +23,7 @@ const disabledButtonStyle: CSSProperties = {
   cursor: 'default',
 }
 
-export function Toolbar({ game }: { game: Game }) {
+export function Toolbar({ game, nodeDefinitions }: { game: Game; nodeDefinitions?: NodeDefinition[] }) {
   const nodes = useGraphStore((s) => s.nodes)
   const connections = useGraphStore((s) => s.connections)
   const nextNodeNumber = useGraphStore((s) => s.nextNodeNumber)
@@ -37,8 +37,8 @@ export function Toolbar({ game }: { game: Game }) {
   const [copied, setCopied] = useState(false)
 
   const definitionsById = useMemo(
-    () => new Map(game.nodeDefinitions.map((d) => [d.Id, d])),
-    [game],
+    () => new Map((nodeDefinitions ?? game.nodeDefinitions).map((d) => [d.Id, d])),
+    [game, nodeDefinitions],
   )
 
   const saveFilename = `script${game.saveFileExtension}`

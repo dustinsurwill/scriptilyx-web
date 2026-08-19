@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { ReactFlowProvider } from '@xyflow/react'
 import { getGame } from './games/registry'
@@ -40,8 +40,60 @@ function useUndoRedoShortcuts() {
   }, [storeApi])
 }
 
+function addonPrefsKey(gameId: string): string {
+  return `wirerig:${gameId}:addons`
+}
+
+function loadEnabledAddonIds(gameId: string): Set<string> {
+  if (typeof localStorage === 'undefined') return new Set()
+  try {
+    const raw = localStorage.getItem(addonPrefsKey(gameId))
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? new Set(parsed.filter((v): v is string => typeof v === 'string')) : new Set()
+  } catch {
+    return new Set()
+  }
+}
+
+function saveEnabledAddonIds(gameId: string, ids: Set<string>) {
+  if (typeof localStorage === 'undefined') return
+  try {
+    localStorage.setItem(addonPrefsKey(gameId), JSON.stringify([...ids]))
+  } catch {
+    // Storage full/unavailable — the toggle just won't persist across reloads.
+  }
+}
+
 function EditorShell({ game }: { game: Game }) {
-  const definitionsById = useMemo(() => new Map(game.nodeDefinitions.map((d) => [d.Id, d])), [game])
+  const [enabledAddonIds, setEnabledAddonIds] = useState<Set<string>>(() => loadEnabledAddonIds(game.id))
+  useEffect(() => saveEnabledAddonIds(game.id, enabledAddonIds), [game.id, enabledAddonIds])
+
+  const nodeDefinitions = useMemo(
+    () => [
+      ...game.nodeDefinitions,
+      ...(game.addons ?? []).filter((a) => enabledAddonIds.has(a.id)).flatMap((a) => a.nodeDefinitions),
+    ],
+    [game, enabledAddonIds],
+  )
+  const definitionsById = useMemo(() => new Map(nodeDefinitions.map((d) => [d.Id, d])), [nodeDefinitions])
+
+  const addonToggles = useMemo(
+    () =>
+      (game.addons ?? []).map((addon) => ({
+        id: addon.id,
+        label: addon.label,
+        description: addon.description,
+        enabled: enabledAddonIds.has(addon.id),
+        onToggle: (id: string) =>
+          setEnabledAddonIds((prev) => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id)
+            else next.add(id)
+            return next
+          }),
+      })),
+    [game, enabledAddonIds],
+  )
 
   const nodes = useGraphStore((s) => s.nodes)
   const connections = useGraphStore((s) => s.connections)
@@ -56,7 +108,7 @@ function EditorShell({ game }: { game: Game }) {
     [nodes, connections, definitionsById],
   )
 
-  const handleAddNode = (definition: (typeof game.nodeDefinitions)[number]) => {
+  const handleAddNode = (definition: (typeof nodeDefinitions)[number]) => {
     const columns = 4
     const x = 60 + (nodes.length % columns) * 260
     const y = 60 + Math.floor(nodes.length / columns) * 200
@@ -72,10 +124,10 @@ function EditorShell({ game }: { game: Game }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', minWidth: 0 }}>
-      <Toolbar game={game} />
+      <Toolbar game={game} nodeDefinitions={nodeDefinitions} />
       <div style={{ display: 'flex', flex: '1 1 auto', minHeight: 0 }}>
         <div style={{ width: leftWidth, flex: '0 0 auto', borderRight: '1px solid #374151', minHeight: 0 }}>
-          <NodePalette nodeDefinitions={game.nodeDefinitions} onAddNode={handleAddNode} title={game.label} />
+          <NodePalette nodeDefinitions={nodeDefinitions} onAddNode={handleAddNode} title={game.label} addons={addonToggles} />
         </div>
 
         <ResizeHandle axis="x" onMouseDown={onLeftHandleDown} />

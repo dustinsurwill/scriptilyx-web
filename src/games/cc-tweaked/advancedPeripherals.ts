@@ -1,0 +1,307 @@
+import type { NodeDefinition } from '../../types/graph'
+import type { GameAddon } from '../../types/game'
+
+function textProp(defaultValue: string) {
+  return { Type: 'text' as const, DefaultValue: defaultValue, Options: [] }
+}
+function numberProp(defaultValue: string) {
+  return { Type: 'number' as const, DefaultValue: defaultValue, Options: [] }
+}
+
+/** Advanced Peripherals node catalog — a popular, actively maintained
+ * CC:Tweaked addon mod (docs at docs.intelligence-modding.de, see
+ * ../../../docs/cc-tweaked-api-notes.md). Gated behind a palette toggle
+ * (see `Game.addons`) since its peripherals only exist for players who have
+ * the addon installed. Covered comprehensively per peripheral (not a token
+ * handful) — each peripheral is its own natural, non-overlapping category,
+ * same spirit as the base catalog. Every node still compiles through the
+ * same "wrap peripheral, call method" emitter shape as vanilla CC:Tweaked
+ * peripherals, so codegen needs no addon-specific handling. */
+const nodeDefinitions: NodeDefinition[] = [
+  // ── ME Bridge (Applied Energistics 2) ───────────────────────────────
+  {
+    Id: 'ap.me.list_items',
+    Category: '🟩 ME Bridge',
+    Title: 'ME: List Items',
+    Description: 'Stores how many distinct item types are visible on the ME network into a named variable (use ME: Get Item Count for one item\'s amount).',
+    Search: 'me bridge applied energistics list items network storage',
+    ActionType: 'MeListItems',
+    InputPorts: ['In'],
+    OutputPorts: ['Next'],
+    Properties: { Side: textProp('back'), Name: textProp('itemTypeCount') },
+    Preview: '{Name} = #{Side}.listItems()',
+  },
+  {
+    Id: 'ap.me.get_item_count',
+    Category: '🟩 ME Bridge',
+    Title: 'ME: Get Item Count',
+    Description: 'Stores how many of a named item are stored on the ME network into a variable.',
+    Search: 'me bridge item count amount how many',
+    ActionType: 'MeGetItemCount',
+    InputPorts: ['In'],
+    OutputPorts: ['Next'],
+    Properties: { Side: textProp('back'), Item: textProp('minecraft:iron_ingot'), Name: textProp('amount') },
+    Preview: '{Name} = {Side}.getItemCount({Item})',
+  },
+  {
+    Id: 'ap.me.push_item',
+    Category: '🟩 ME Bridge',
+    Title: 'ME: Push Item',
+    Description: 'Pushes an item from the ME network into an inventory on a chosen side. Branches Pushed/Failed.',
+    Search: 'me bridge push item export inventory',
+    ActionType: 'MePushItem',
+    InputPorts: ['In'],
+    OutputPorts: ['Pushed', 'Failed'],
+    Properties: { Side: textProp('back'), Item: textProp('minecraft:iron_ingot'), Count: numberProp('1'), ToSide: textProp('front') },
+    Preview: '{Side}.pushItem({Item}, {ToSide})',
+  },
+  {
+    Id: 'ap.me.pull_item',
+    Category: '🟩 ME Bridge',
+    Title: 'ME: Pull Item',
+    Description: 'Pulls an item from an inventory on a chosen side into the ME network. Branches Pulled/Failed.',
+    Search: 'me bridge pull item import inventory',
+    ActionType: 'MePullItem',
+    InputPorts: ['In'],
+    OutputPorts: ['Pulled', 'Failed'],
+    Properties: { Side: textProp('back'), Item: textProp('minecraft:iron_ingot'), Count: numberProp('1'), FromSide: textProp('front') },
+    Preview: '{Side}.pullItem({Item}, {FromSide})',
+  },
+  {
+    Id: 'ap.me.craft_item',
+    Category: '🟩 ME Bridge',
+    Title: 'ME: Craft Item',
+    Description: 'Requests the ME network craft a quantity of an item (needs a working autocrafting setup for it in-game). Branches Started/Failed.',
+    Search: 'me bridge craft item autocraft request',
+    ActionType: 'MeCraftItem',
+    InputPorts: ['In'],
+    OutputPorts: ['Started', 'Failed'],
+    Properties: { Side: textProp('back'), Item: textProp('minecraft:iron_ingot'), Count: numberProp('1') },
+    Preview: '{Side}.craftItem({Item}, {Count})',
+  },
+
+  // ── RS Bridge (Refined Storage) ─────────────────────────────────────
+  {
+    Id: 'ap.rs.get_item_count',
+    Category: '🟦 RS Bridge',
+    Title: 'RS: Get Item Count',
+    Description: 'Stores how many of a named item are stored on the Refined Storage network into a variable.',
+    Search: 'rs bridge refined storage item count amount',
+    ActionType: 'RsGetItemCount',
+    InputPorts: ['In'],
+    OutputPorts: ['Next'],
+    Properties: { Side: textProp('back'), Item: textProp('minecraft:iron_ingot'), Name: textProp('amount') },
+    Preview: '{Name} = {Side}.getItemCount({Item})',
+  },
+  {
+    Id: 'ap.rs.push_item',
+    Category: '🟦 RS Bridge',
+    Title: 'RS: Push Item',
+    Description: 'Pushes an item from the Refined Storage network into an inventory on a chosen side. Branches Pushed/Failed.',
+    Search: 'rs bridge push item export inventory',
+    ActionType: 'RsPushItem',
+    InputPorts: ['In'],
+    OutputPorts: ['Pushed', 'Failed'],
+    Properties: { Side: textProp('back'), Item: textProp('minecraft:iron_ingot'), Count: numberProp('1'), ToSide: textProp('front') },
+    Preview: '{Side}.pushItem({Item}, {ToSide})',
+  },
+  {
+    Id: 'ap.rs.pull_item',
+    Category: '🟦 RS Bridge',
+    Title: 'RS: Pull Item',
+    Description: 'Pulls an item from an inventory on a chosen side into the Refined Storage network. Branches Pulled/Failed.',
+    Search: 'rs bridge pull item import inventory',
+    ActionType: 'RsPullItem',
+    InputPorts: ['In'],
+    OutputPorts: ['Pulled', 'Failed'],
+    Properties: { Side: textProp('back'), Item: textProp('minecraft:iron_ingot'), Count: numberProp('1'), FromSide: textProp('front') },
+    Preview: '{Side}.pullItem({Item}, {FromSide})',
+  },
+  {
+    Id: 'ap.rs.craft_item',
+    Category: '🟦 RS Bridge',
+    Title: 'RS: Craft Item',
+    Description: 'Requests the Refined Storage network craft a quantity of an item. Branches Started/Failed.',
+    Search: 'rs bridge craft item autocraft request',
+    ActionType: 'RsCraftItem',
+    InputPorts: ['In'],
+    OutputPorts: ['Started', 'Failed'],
+    Properties: { Side: textProp('back'), Item: textProp('minecraft:iron_ingot'), Count: numberProp('1') },
+    Preview: '{Side}.craftItem({Item}, {Count})',
+  },
+
+  // ── Chat Box ─────────────────────────────────────────────────────────
+  {
+    Id: 'ap.chatbox.send',
+    Category: '💬 Chat Box',
+    Title: 'Chat Box: Send Message',
+    Description: 'Sends a message to the whole server\'s in-game chat.',
+    Search: 'chat box send message server broadcast',
+    ActionType: 'ChatBoxSend',
+    InputPorts: ['In'],
+    OutputPorts: ['Next'],
+    Properties: { Side: textProp('right'), Message: textProp(''), Prefix: textProp('[Computer]') },
+    Preview: '{Side}.sendMessage({Message})',
+  },
+  {
+    Id: 'ap.chatbox.send_to_player',
+    Category: '💬 Chat Box',
+    Title: 'Chat Box: Send To Player',
+    Description: 'Sends a private chat message to one named player.',
+    Search: 'chat box send message player private whisper',
+    ActionType: 'ChatBoxSendToPlayer',
+    InputPorts: ['In'],
+    OutputPorts: ['Next'],
+    Properties: { Side: textProp('right'), Player: textProp(''), Message: textProp(''), Prefix: textProp('[Computer]') },
+    Preview: '{Side}.sendMessageToPlayer({Message}, {Player})',
+  },
+
+  // ── Redstone Integrator ─────────────────────────────────────────────
+  {
+    Id: 'ap.redstone_integrator.read',
+    Category: '🔴 Redstone Integrator',
+    Title: 'Redstone Integrator: Read',
+    Description: 'Reads a digital redstone signal on any of the six sides (not just this block\'s own sides) into a named variable.',
+    Search: 'redstone integrator read side digital signal',
+    ActionType: 'RedstoneIntegratorRead',
+    InputPorts: ['In'],
+    OutputPorts: ['Next'],
+    Properties: { Side: textProp('back'), TargetSide: textProp('north'), Name: textProp('signal') },
+    Preview: '{Name} = {Side}.getInput({TargetSide})',
+  },
+  {
+    Id: 'ap.redstone_integrator.write',
+    Category: '🔴 Redstone Integrator',
+    Title: 'Redstone Integrator: Write',
+    Description: 'Sets a digital redstone signal on any of the six sides.',
+    Search: 'redstone integrator write side digital signal set',
+    ActionType: 'RedstoneIntegratorWrite',
+    InputPorts: ['In'],
+    OutputPorts: ['Next'],
+    Properties: { Side: textProp('back'), TargetSide: textProp('north'), Value: textProp('true') },
+    Preview: '{Side}.setOutput({TargetSide}, {Value})',
+  },
+
+  // ── Colony Integrator (MineColonies) ────────────────────────────────
+  {
+    Id: 'ap.colony.stats',
+    Category: '🏘 Colony Integrator',
+    Title: 'Colony: Get Stats',
+    Description: 'Stores a nearby colony\'s citizen count and happiness into named variables.',
+    Search: 'colony integrator minecolonies stats citizens happiness',
+    ActionType: 'ColonyGetStats',
+    InputPorts: ['In'],
+    OutputPorts: ['Next'],
+    Properties: { Side: textProp('back'), NameCitizens: textProp('citizenCount'), NameHappiness: textProp('happiness') },
+    Preview: '{NameCitizens},{NameHappiness} = {Side} colony stats',
+  },
+  {
+    Id: 'ap.colony.is_in_colony',
+    Category: '🏘 Colony Integrator',
+    Title: 'Colony: Is In Colony?',
+    Description: 'Branches True if this block is inside a MineColonies colony\'s borders, False if not.',
+    Search: 'colony integrator in colony territory check',
+    ActionType: 'ColonyIsInColony',
+    InputPorts: ['In'],
+    OutputPorts: ['True', 'False'],
+    Properties: { Side: textProp('back') },
+    Preview: '{Side}.isInColony()',
+  },
+
+  // ── Environment Detector ────────────────────────────────────────────
+  {
+    Id: 'ap.env.get_time',
+    Category: '🌱 Environment Detector',
+    Title: 'Environment: Get Time',
+    Description: 'Stores the current world time of day into a named variable.',
+    Search: 'environment detector time day night clock',
+    ActionType: 'EnvGetTime',
+    InputPorts: ['In'],
+    OutputPorts: ['Next'],
+    Properties: { Side: textProp('back'), Name: textProp('timeOfDay') },
+    Preview: '{Name} = {Side}.getTime()',
+  },
+  {
+    Id: 'ap.env.get_moon_phase',
+    Category: '🌱 Environment Detector',
+    Title: 'Environment: Get Moon Phase',
+    Description: 'Stores the current moon phase (0-7) into a named variable.',
+    Search: 'environment detector moon phase night',
+    ActionType: 'EnvGetMoonPhase',
+    InputPorts: ['In'],
+    OutputPorts: ['Next'],
+    Properties: { Side: textProp('back'), Name: textProp('moonPhase') },
+    Preview: '{Name} = {Side}.getMoonPhase()',
+  },
+  {
+    Id: 'ap.env.get_light_level',
+    Category: '🌱 Environment Detector',
+    Title: 'Environment: Get Light Level',
+    Description: 'Stores the block\'s current light level into a named variable.',
+    Search: 'environment detector light level brightness',
+    ActionType: 'EnvGetLightLevel',
+    InputPorts: ['In'],
+    OutputPorts: ['Next'],
+    Properties: { Side: textProp('back'), Name: textProp('lightLevel') },
+    Preview: '{Name} = {Side}.getBlockLightLevel()',
+  },
+
+  // ── Player Detector ──────────────────────────────────────────────────
+  {
+    Id: 'ap.player.in_range',
+    Category: '🧍 Player Detector',
+    Title: 'Player Detector: Is Player Near?',
+    Description: 'Branches True if a named player is within the detector\'s range, False if not.',
+    Search: 'player detector in range near check',
+    ActionType: 'PlayerInRange',
+    InputPorts: ['In'],
+    OutputPorts: ['True', 'False'],
+    Properties: { Side: textProp('back'), Player: textProp('') },
+    Preview: '{Side}.isPlayerInRange({Player})',
+  },
+  {
+    Id: 'ap.player.get_nearest',
+    Category: '🧍 Player Detector',
+    Title: 'Player Detector: Get Nearest Player',
+    Description: 'Stores the name of the nearest player in range into a named variable. Branches Found/NotFound.',
+    Search: 'player detector nearest closest name',
+    ActionType: 'PlayerGetNearest',
+    InputPorts: ['In'],
+    OutputPorts: ['Found', 'NotFound'],
+    Properties: { Side: textProp('back'), Name: textProp('nearestPlayer') },
+    Preview: '{Name} = {Side}.getNearestPlayer()',
+  },
+
+  // ── Energy Detector ──────────────────────────────────────────────────
+  {
+    Id: 'ap.energy.get_stored',
+    Category: '🔋 Energy Detector',
+    Title: 'Energy Detector: Get Stored',
+    Description: 'Stores the currently stored energy (FE) into a named variable.',
+    Search: 'energy detector stored fe rf power level',
+    ActionType: 'EnergyGetStored',
+    InputPorts: ['In'],
+    OutputPorts: ['Next'],
+    Properties: { Side: textProp('back'), Name: textProp('storedEnergy') },
+    Preview: '{Name} = {Side}.getEnergyStored()',
+  },
+  {
+    Id: 'ap.energy.get_flow',
+    Category: '🔋 Energy Detector',
+    Title: 'Energy Detector: Get Flow',
+    Description: 'Stores the current energy transfer rate (FE/tick) into a named variable.',
+    Search: 'energy detector flow rate transfer fe rf',
+    ActionType: 'EnergyGetFlow',
+    InputPorts: ['In'],
+    OutputPorts: ['Next'],
+    Properties: { Side: textProp('back'), Name: textProp('energyFlow') },
+    Preview: '{Name} = {Side}.getTransferRate()',
+  },
+]
+
+export const advancedPeripheralsAddon: GameAddon = {
+  id: 'advanced-peripherals',
+  label: 'Advanced Peripherals',
+  description: 'Adds nodes for the Advanced Peripherals mod\'s blocks — ME/RS Bridge, Chat Box, Redstone Integrator, Colony Integrator, Environment/Player/Energy Detector. Only turn this on if you have the mod installed.',
+  nodeDefinitions,
+}
