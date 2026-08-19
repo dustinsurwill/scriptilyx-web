@@ -135,17 +135,12 @@ describe('stopScriptEmitter', () => {
   })
 })
 
-const COMMAND_ROUTER_BUILTIN_OUTPUT_PORTS = [
-  'startup', 'shutdown', 'dock', 'undock', 'mine', 'stop', 'status',
-  'open_airlock', 'close_airlock', 'open_hangar', 'close_hangar', 'unknown',
-]
-
 describe('commandRouterEmitter', () => {
-  it('only emits case labels for arguments the user actually configured', () => {
+  it('only emits case labels for cases the user actually configured', () => {
     const node = makeNode({
       ActionType: 'CommandRouter',
-      OutputPorts: COMMAND_ROUTER_BUILTIN_OUTPUT_PORTS,
-      Properties: { StartupArgument: 'startup', DockArgument: '' },
+      OutputPorts: ['Case1', 'Case2', 'unknown'],
+      Properties: { Case1Value: 'startup', Case2Value: '' },
     })
     const emit = commandRouterEmitter(node, fakeContext())
     const src = statementsOf(emit).join('\n')
@@ -154,15 +149,27 @@ describe('commandRouterEmitter', () => {
     expect(src).toContain('default:')
   })
 
-  it('routes a user-added customN case via its CustomNArgument property, not just the built-in 11', () => {
+  it('routes however many CaseN cases this instance has, not a fixed built-in set', () => {
     const node = makeNode({
       ActionType: 'CommandRouter',
-      OutputPorts: [...COMMAND_ROUTER_BUILTIN_OUTPUT_PORTS.slice(0, -1), 'custom1', 'unknown'],
-      Properties: { StartupArgument: 'startup', Custom1Argument: 'refuel' },
+      OutputPorts: ['Case1', 'Case2', 'Case3', 'unknown'],
+      Properties: { Case1Value: 'startup', Case2Value: 'dock', Case3Value: 'refuel' },
     })
     const emit = commandRouterEmitter(node, fakeContext())
     const src = statementsOf(emit).join('\n')
-    expect(src).toContain('case "refuel": NEXT(custom1);')
+    expect(src).toContain('case "refuel": NEXT(Case3); break;')
+  })
+
+  it('keeps break; a real statement, not trapped inside the "not connected" comment, when a case is unwired', () => {
+    const node = makeNode({
+      ActionType: 'CommandRouter',
+      OutputPorts: ['Case1', 'unknown'],
+      Properties: { Case1Value: 'startup' },
+    })
+    const emit = commandRouterEmitter(node, fakeContext(new Set(['Case1', 'unknown'])))
+    const src = statementsOf(emit).join('\n')
+    expect(src).toContain('case "startup": break; // "Case1" not connected')
+    expect(src).toContain('default: break; // "unknown" not connected')
   })
 })
 

@@ -1425,80 +1425,32 @@
    "Id": "logic.command_router",
    "Category": "🧠 Logic",
    "Title": "Command Router",
-   "Description": "Routes many programmable block arguments from one node.",
-   "Search": "command router argument startup shutdown dock undock mine stop status",
+   "Description": "Routes the programmable block's run argument to one of several outputs by matching it against each case's literal, falling through to unknown if nothing matches. Add/remove cases in the property panel.",
+   "Search": "command router argument switch case dispatch dynamic",
    "ActionType": "CommandRouter",
    "InputPorts": [
     "In"
    ],
    "OutputPorts": [
-    "startup",
-    "shutdown",
-    "dock",
-    "undock",
-    "mine",
-    "stop",
-    "status",
-    "open_airlock",
-    "close_airlock",
-    "open_hangar",
-    "close_hangar",
+    "Case1",
+    "Case2",
+    "Case3",
     "unknown"
    ],
    "Properties": {
-    "StartupArgument": {
+    "Case1Value": {
      "Type": "text",
      "DefaultValue": "startup",
      "Options": []
     },
-    "ShutdownArgument": {
+    "Case2Value": {
      "Type": "text",
      "DefaultValue": "shutdown",
      "Options": []
     },
-    "DockArgument": {
-     "Type": "text",
-     "DefaultValue": "dock",
-     "Options": []
-    },
-    "UndockArgument": {
-     "Type": "text",
-     "DefaultValue": "undock",
-     "Options": []
-    },
-    "MineArgument": {
-     "Type": "text",
-     "DefaultValue": "mine",
-     "Options": []
-    },
-    "StopArgument": {
-     "Type": "text",
-     "DefaultValue": "stop",
-     "Options": []
-    },
-    "StatusArgument": {
+    "Case3Value": {
      "Type": "text",
      "DefaultValue": "status",
-     "Options": []
-    },
-    "OpenAirlockArgument": {
-     "Type": "text",
-     "DefaultValue": "open_airlock",
-     "Options": []
-    },
-    "CloseAirlockArgument": {
-     "Type": "text",
-     "DefaultValue": "close_airlock",
-     "Options": []
-    },
-    "OpenHangarArgument": {
-     "Type": "text",
-     "DefaultValue": "open_hangar",
-     "Options": []
-    },
-    "CloseHangarArgument": {
-     "Type": "text",
-     "DefaultValue": "close_hangar",
      "Options": []
     }
    },

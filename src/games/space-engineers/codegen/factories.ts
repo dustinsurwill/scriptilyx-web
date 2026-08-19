@@ -14,6 +14,20 @@ export function prop(node: ScriptNode, key: string): string {
   return node.Properties[key] ?? ''
 }
 
+/** `{ ctx.next(...) }` for embedding a branch's jump inline inside an
+ * if/else — but `ctx.next()` returns a bare `// "Port" not connected`
+ * comment when the port has nothing wired to it, and putting that inside
+ * `{ ... }` traps the closing brace inside the comment. `minifySource`'s
+ * `//`-to-end-of-line stripping then deletes that brace along with the
+ * comment, unbalancing braces in the minified script (silent in the
+ * unminified one, since the comment still visually ends the line there —
+ * a real bug found via testing, see also caseLine in logicEmitters.ts).
+ * Ordering on `ctx.hasNext` keeps the braces real syntax either way. */
+export function nextBlock(ctx: EmitContext, node: ScriptNode, port: string, leading = ''): string {
+  const call = ctx.next(node, port)
+  return ctx.hasNext(node, port) ? `{ ${leading}${call} }` : `{ ${leading}} ${call}`
+}
+
 /** `{ if (GetBlock(name) is IFace v) v.Member = <value>; }` then advance via Next. */
 export function blockPropertySetter(
   iface: string,

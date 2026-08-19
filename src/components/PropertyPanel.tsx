@@ -3,19 +3,27 @@ import type { NodeDefinition, ScriptNode } from '../types/graph'
 import { useGraphStore } from '../store/graphStoreContext'
 import type { OutputCaseConfig } from '../store/graphStore'
 import { buildVariableRegistry, type VarKind, type VariableRegistry } from '../lib/variableRegistry'
-import { commandRouterPropertyKey, numberGreaterRouterThresholdKey } from '../games/space-engineers/codegen/logicEmitters'
+import { numberGreaterRouterThresholdKey } from '../games/space-engineers/codegen/logicEmitters'
 import { ItemPicker } from './ItemPicker'
 import type { GameItem, Game } from '../types/game'
 
 const ALL_KINDS: VarKind[] = ['num', 'text', 'bool']
 
-/** Command Router's original 11 named commands — fixed, never removable
- * (see commandRouterPropertyKey in codegen/logicEmitters.ts, the codegen
- * side of this same distinction). */
-const COMMAND_ROUTER_BUILTIN_PORTS = new Set([
-  'startup', 'shutdown', 'dock', 'undock', 'mine', 'stop', 'status',
-  'open_airlock', 'close_airlock', 'open_hangar', 'close_hangar',
-])
+/** `CaseN`/`CaseNValue` case-numbering shared by Switch and Command
+ * Router — both are fully generic (every case is user-managed) once
+ * Command Router dropped its original 11 fixed named commands in favor of
+ * this same scheme, pre-wired to `_argument` instead of a `Value`
+ * property. See commandRouterEmitter/switchEmitter in
+ * codegen/logicEmitters.ts. */
+function caseNConfig(terminalPort: string): OutputCaseConfig {
+  return {
+    terminalPort,
+    nextPort: (cases) => `Case${cases.length + 1}`,
+    isRemovable: () => true,
+    propertyKey: (port) => `${port}Value`,
+    defaultValue: (port) => port.toLowerCase(),
+  }
+}
 
 /** Number Greater Router shipped with Greater2..Greater6 built in — those
  * five stay fixed; only Greater7 and up are user-managed. */
@@ -25,32 +33,12 @@ function isBuiltInGreaterPort(port: string): boolean {
 }
 
 /** Per-ActionType `OutputCaseConfig` for every "router"-shaped node this
- * panel offers a "manage cases" control for — Switch's cases are all
- * user-managed from the start; Command Router/Number Greater Router keep
- * their original fixed cases and only let the user add/remove beyond
- * them. Building this here (not in the store) keeps graphStore.ts free of
- * any per-ActionType naming knowledge — see OutputCaseConfig's doc comment. */
+ * panel offers a "manage cases" control for. Building this here (not in
+ * the store) keeps graphStore.ts free of any per-ActionType naming
+ * knowledge — see OutputCaseConfig's doc comment. */
 const OUTPUT_CASE_CONFIGS: Record<string, OutputCaseConfig> = {
-  Switch: {
-    terminalPort: 'Default',
-    nextPort: (cases) => `Case${cases.length + 1}`,
-    isRemovable: () => true,
-    propertyKey: (port) => `${port}Value`,
-    defaultValue: (port) => port.toLowerCase(),
-  },
-  CommandRouter: {
-    terminalPort: 'unknown',
-    isRemovable: (port) => !COMMAND_ROUTER_BUILTIN_PORTS.has(port),
-    nextPort: (cases) => {
-      const customNums = cases
-        .filter((p) => !COMMAND_ROUTER_BUILTIN_PORTS.has(p))
-        .map((p) => Number(/^custom(\d+)$/.exec(p)?.[1] ?? 0))
-      const n = customNums.length ? Math.max(...customNums) + 1 : 1
-      return `custom${n}`
-    },
-    propertyKey: commandRouterPropertyKey,
-    defaultValue: (port) => port,
-  },
+  Switch: caseNConfig('Default'),
+  CommandRouter: caseNConfig('unknown'),
   NumberGreaterRouter: {
     terminalPort: 'Else',
     isRemovable: (port) => !isBuiltInGreaterPort(port),
