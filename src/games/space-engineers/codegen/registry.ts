@@ -16,6 +16,7 @@ const controlFlowEmitters: Record<string, NodeEmitter> = {
   StopScript: logic.stopScriptEmitter,
   CommandRouter: logic.commandRouterEmitter,
   NumberGreaterRouter: logic.numberGreaterRouterEmitter,
+  Switch: logic.switchEmitter,
   RepeatTimes: logic.repeatTimesEmitter,
   CustomCode: logic.customCodeEmitter,
   SetNumberVariable: logic.setNumberVariableEmitter,

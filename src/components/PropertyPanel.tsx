@@ -1,11 +1,56 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { NodeDefinition, ScriptNode } from '../types/graph'
 import { useGraphStore } from '../store/graphStoreContext'
+import type { OutputCaseConfig } from '../store/graphStore'
 import { buildVariableRegistry, type VarKind, type VariableRegistry } from '../lib/variableRegistry'
+import { numberGreaterRouterThresholdKey } from '../games/space-engineers/codegen/logicEmitters'
 import { ItemPicker } from './ItemPicker'
 import type { GameItem, Game } from '../types/game'
 
 const ALL_KINDS: VarKind[] = ['num', 'text', 'bool']
+
+/** `CaseN`/`CaseNValue` case-numbering shared by Switch and Command
+ * Router — both are fully generic (every case is user-managed) once
+ * Command Router dropped its original 11 fixed named commands in favor of
+ * this same scheme, pre-wired to `_argument` instead of a `Value`
+ * property. See commandRouterEmitter/switchEmitter in
+ * codegen/logicEmitters.ts. */
+function caseNConfig(terminalPort: string): OutputCaseConfig {
+  return {
+    terminalPort,
+    nextPort: (cases) => `Case${cases.length + 1}`,
+    isRemovable: () => true,
+    propertyKey: (port) => `${port}Value`,
+    defaultValue: (port) => port.toLowerCase(),
+  }
+}
+
+/** Number Greater Router shipped with Greater2..Greater6 built in — those
+ * five stay fixed; only Greater7 and up are user-managed. */
+function isBuiltInGreaterPort(port: string): boolean {
+  const n = Number(/^Greater(\d+)$/.exec(port)?.[1] ?? 0)
+  return n > 0 && n <= 6
+}
+
+/** Per-ActionType `OutputCaseConfig` for every "router"-shaped node this
+ * panel offers a "manage cases" control for. Building this here (not in
+ * the store) keeps graphStore.ts free of any per-ActionType naming
+ * knowledge — see OutputCaseConfig's doc comment. */
+const OUTPUT_CASE_CONFIGS: Record<string, OutputCaseConfig> = {
+  Switch: caseNConfig('Default'),
+  CommandRouter: caseNConfig('unknown'),
+  NumberGreaterRouter: {
+    terminalPort: 'Else',
+    isRemovable: (port) => !isBuiltInGreaterPort(port),
+    nextPort: (cases) => {
+      const nums = cases.map((p) => Number(/^Greater(\d+)$/.exec(p)?.[1] ?? 0))
+      const n = (nums.length ? Math.max(...nums) : 6) + 1
+      return `Greater${n}`
+    },
+    propertyKey: numberGreaterRouterThresholdKey,
+    defaultValue: (port) => /^Greater(\d+)$/.exec(port)?.[1] ?? '0',
+  },
+}
 
 interface PropertyPanelProps {
   scriptNode: ScriptNode | undefined
@@ -60,6 +105,17 @@ function logicTypeFieldAccess(definitionId: string | undefined, key: string): 'r
   if (definitionId === 'ic10.device.read') return 'read'
   if (definitionId === 'ic10.device.write') return 'write'
   return undefined
+}
+
+/** Switch's `Value` — the thing being matched against each case's literal
+ * — is a whole-value field like Enabled/Percent, not a template string, so
+ * it gets the same "insert variable instead of a fixed value" picker the
+ * number-type branch below already offers, restricted to text-kind
+ * variables (matches resolvableText's GetText lookup — a num/bool
+ * variable's value can't be compared against a Switch's string case
+ * literals without an explicit `{text:name}`/`{num:name}` override). */
+function isSwitchValueField(actionType: string | undefined, key: string): boolean {
+  return actionType === 'Switch' && key === 'Value'
 }
 
 /** True for a value like "{myFlag}" or "{bool:myFlag}" — a whole-value
@@ -125,6 +181,8 @@ function VariablePicker({
 
 export function PropertyPanel({ scriptNode, definition, itemList, logicTypeCatalog }: PropertyPanelProps) {
   const updateNodeProperty = useGraphStore((s) => s.updateNodeProperty)
+  const addOutputCase = useGraphStore((s) => s.addOutputCase)
+  const removeOutputCase = useGraphStore((s) => s.removeOutputCase)
   const checkpoint = useGraphStore((s) => s.checkpoint)
   const allNodes = useGraphStore((s) => s.nodes)
   const registry = useMemo(() => buildVariableRegistry(allNodes), [allNodes])
@@ -154,6 +212,29 @@ export function PropertyPanel({ scriptNode, definition, itemList, logicTypeCatal
       {definition?.Description && (
         <p style={{ fontSize: 12, opacity: 0.75, margin: '0 0 12px', lineHeight: 1.4 }}>{definition.Description}</p>
       )}
+      {definition && OUTPUT_CASE_CONFIGS[definition.ActionType] && (() => {
+        const config = OUTPUT_CASE_CONFIGS[definition.ActionType]
+        const removableCases = scriptNode.OutputPorts.filter(
+          (p) => p !== config.terminalPort && config.isRemovable(p),
+        )
+        return (
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 12 }}>
+            <span style={{ fontSize: 12, opacity: 0.85 }}>
+              {removableCases.length} added case{removableCases.length === 1 ? '' : 's'}
+            </span>
+            <button type="button" onClick={() => addOutputCase(scriptNode.Id, config)}>
+              + Add Case
+            </button>
+            <button
+              type="button"
+              disabled={removableCases.length === 0}
+              onClick={() => removeOutputCase(scriptNode.Id, config)}
+            >
+              − Remove Case
+            </button>
+          </div>
+        )
+      })()}
       {Object.entries(scriptNode.Properties).map(([key, value]) => {
         const propDef = definition?.Properties[key]
         const type = propDef?.Type ?? 'text'
@@ -309,6 +390,23 @@ export function PropertyPanel({ scriptNode, definition, itemList, logicTypeCatal
                   registry={registry}
                   mode="replace"
                   kinds={['num']}
+                  onInsert={(token) => updateNodeProperty(scriptNode.Id, key, token)}
+                />
+              </div>
+            ) : isSwitchValueField(definition?.ActionType, key) ? (
+              <div style={{ display: 'flex', gap: 4 }}>
+                <input
+                  type="text"
+                  value={value}
+                  placeholder="{myVar}"
+                  onFocus={checkpoint}
+                  onChange={(e) => updateNodeProperty(scriptNode.Id, key, e.target.value)}
+                  style={{ width: '100%', boxSizing: 'border-box' }}
+                />
+                <VariablePicker
+                  registry={registry}
+                  mode="replace"
+                  kinds={['text']}
                   onInsert={(token) => updateNodeProperty(scriptNode.Id, key, token)}
                 />
               </div>

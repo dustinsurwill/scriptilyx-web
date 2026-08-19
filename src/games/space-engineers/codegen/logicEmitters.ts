@@ -1,7 +1,7 @@
 import type { ScriptNode } from '../../../types/graph'
-import { interpolatedTextExpr, resolvableNumber } from './factories'
+import { interpolatedTextExpr, nextBlock, resolvableNumber, resolvableText } from './factories'
 import { sanitizeIdentifier, stringLiteral } from './format'
-import type { NodeEmitter } from './types'
+import type { EmitContext, NodeEmitter } from './types'
 
 function prop(node: ScriptNode, key: string): string {
   return node.Properties[key] ?? ''
@@ -79,48 +79,88 @@ export const stopScriptEmitter: NodeEmitter = () => ({
   statements: [`Runtime.UpdateFrequency = UpdateFrequency.None;`, `return;`],
 })
 
-const COMMAND_ROUTER_PORTS = [
-  ['StartupArgument', 'startup'],
-  ['ShutdownArgument', 'shutdown'],
-  ['DockArgument', 'dock'],
-  ['UndockArgument', 'undock'],
-  ['MineArgument', 'mine'],
-  ['StopArgument', 'stop'],
-  ['StatusArgument', 'status'],
-  ['OpenAirlockArgument', 'open_airlock'],
-  ['CloseAirlockArgument', 'close_airlock'],
-  ['OpenHangarArgument', 'open_hangar'],
-  ['CloseHangarArgument', 'close_hangar'],
-] as const
+/** One `case`/`default` line of a switch block, always ending in a real
+ * `break;` statement — not one that can get swallowed. `ctx.next()` returns
+ * either a real statement (`Foo();`) when the port is wired, or a bare
+ * `// "Port" not connected` comment when it isn't; putting `break;` *after*
+ * that comment would put it inside the comment, so `minifySource`'s
+ * `//`-to-end-of-line stripping deletes it along with the comment,
+ * silently turning the case into a fallthrough in the minified script
+ * (never in the unminified one, since the comment still visually ends the
+ * line there — a real, previously-shipped bug found via testing). Ordering
+ * on `ctx.hasNext` keeps `break;` a real statement either way. */
+function caseLine(ctx: EmitContext, node: ScriptNode, label: string, port: string): string {
+  const call = ctx.next(node, port)
+  return ctx.hasNext(node, port) ? `  ${label}: ${call} break;` : `  ${label}: break; ${call}`
+}
 
+/** Routes on `_argument` (the PB's own run argument) to one of a
+ * user-managed number of `CaseN` outputs by matching it against each
+ * case's literal (`CaseNValue`), falling through to `unknown` if nothing
+ * matches — same generic case-management shape as `switchEmitter` (see its
+ * doc comment), just pre-wired to `_argument` instead of a `Value`
+ * property. `node.OutputPorts` is the per-instance array (mutated by the
+ * store's addOutputCase/removeOutputCase actions), not the catalog
+ * definition's, so however many cases this instance has is exactly how
+ * many `case` labels get emitted. */
 export const commandRouterEmitter: NodeEmitter = (node, ctx) => {
+  const casePorts = node.OutputPorts.filter((p) => p !== 'unknown')
   const lines: string[] = ['switch (_argument) {']
-  for (const [propKey, port] of COMMAND_ROUTER_PORTS) {
-    const argument = prop(node, propKey)
+  for (const port of casePorts) {
+    const argument = prop(node, `${port}Value`)
     if (!argument.trim()) continue
-    lines.push(`  case ${stringLiteral(argument)}: ${ctx.next(node, port)} break;`)
+    lines.push(caseLine(ctx, node, `case ${stringLiteral(argument)}`, port))
   }
-  lines.push(`  default: ${ctx.next(node, 'unknown')} break;`)
+  lines.push(caseLine(ctx, node, 'default', 'unknown'))
   lines.push('}')
   return { kind: 'raw', statements: lines }
+}
+
+/** Routes to one of a user-managed number of `CaseN` outputs by matching
+ * `Value` against each case's literal (`CaseNValue`), falling through to
+ * `Default` if nothing matches. `node.OutputPorts` is the per-instance
+ * array (mutated by the store's addOutputCase/removeOutputCase actions),
+ * not the catalog definition's, so however many cases this particular node
+ * instance has is exactly how many `case` labels get emitted — see
+ * ScriptGraphNode/PropertyPanel for how the port count is managed on the
+ * canvas. */
+export const switchEmitter: NodeEmitter = (node, ctx) => {
+  const value = resolvableText(node, 'Value', ctx)
+  const casePorts = node.OutputPorts.filter((p) => p !== 'Default')
+  const lines: string[] = [`switch (${value}) {`]
+  for (const port of casePorts) {
+    lines.push(caseLine(ctx, node, `case ${stringLiteral(prop(node, `${port}Value`))}`, port))
+  }
+  lines.push(caseLine(ctx, node, 'default', 'Default'))
+  lines.push('}')
+  return { kind: 'raw', statements: lines }
+}
+
+/** Number Greater Router's `GreaterN`/`ThresholdN` ports were already
+ * plain-numeric (Greater2..Greater6 out of the box), so growing beyond 6
+ * needs no new naming scheme — see numberGreaterRouterCaseConfig, which
+ * lets the same addOutputCase/removeOutputCase mechanism append Greater7,
+ * Greater8, ... beyond the original fixed 5. */
+export function numberGreaterRouterThresholdKey(port: string): string {
+  const n = /^Greater(\d+)$/.exec(port)?.[1] ?? '0'
+  return `Threshold${n}`
 }
 
 export const numberGreaterRouterEmitter: NodeEmitter = (node, ctx) => {
   ctx.useHelper('Vars')
   const name = stringLiteral(prop(node, 'Name'))
-  const thresholds: [string, string][] = [
-    ['Threshold6', 'Greater6'],
-    ['Threshold5', 'Greater5'],
-    ['Threshold4', 'Greater4'],
-    ['Threshold3', 'Greater3'],
-    ['Threshold2', 'Greater2'],
-  ]
+  // Checked highest threshold first so only the highest one a value
+  // actually clears fires, matching the original fixed-order behavior.
+  const greaterPorts = node.OutputPorts
+    .filter((p) => p !== 'Else')
+    .slice()
+    .sort((a, b) => Number(/^Greater(\d+)$/.exec(b)?.[1] ?? 0) - Number(/^Greater(\d+)$/.exec(a)?.[1] ?? 0))
   const lines: string[] = []
   let opened = 0
-  for (const [propKey, port] of thresholds) {
-    const value = prop(node, propKey)
+  for (const port of greaterPorts) {
+    const value = prop(node, numberGreaterRouterThresholdKey(port))
     if (!value.trim()) continue
-    lines.push(`if (GetNum(${name}) > ${value}) { ${ctx.next(node, port)} }`)
+    lines.push(`if (GetNum(${name}) > ${value}) ${nextBlock(ctx, node, port)}`)
     lines.push(`else {`)
     opened++
   }
@@ -136,8 +176,8 @@ export const repeatTimesEmitter: NodeEmitter = (node, ctx) => {
   return {
     kind: 'raw',
     statements: [
-      `if (GetNum(${key}) < ${times}) { _num[${key}] = GetNum(${key}) + 1; ${ctx.next(node, 'Loop')} }`,
-      `else { _num[${key}] = 0; ${ctx.next(node, 'Done')} }`,
+      `if (GetNum(${key}) < ${times}) ${nextBlock(ctx, node, 'Loop', `_num[${key}] = GetNum(${key}) + 1; `)}`,
+      `else ${nextBlock(ctx, node, 'Done', `_num[${key}] = 0; `)}`,
     ],
   }
 }

@@ -50,9 +50,9 @@ export const scenarioTemplates: ScenarioTemplate[] = [
     ],
     edges: [
       { from: 'start', fromPort: 'Next', to: 'router', toPort: 'In' },
-      { from: 'router', fromPort: 'startup', to: 'groupOn', toPort: 'In' },
-      { from: 'router', fromPort: 'shutdown', to: 'groupOff', toPort: 'In' },
-      { from: 'router', fromPort: 'status', to: 'statusLcd', toPort: 'In' },
+      { from: 'router', fromPort: 'Case1', to: 'groupOn', toPort: 'In' },
+      { from: 'router', fromPort: 'Case2', to: 'groupOff', toPort: 'In' },
+      { from: 'router', fromPort: 'Case3', to: 'statusLcd', toPort: 'In' },
     ],
   },
   {

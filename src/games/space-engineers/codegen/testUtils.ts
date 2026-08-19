@@ -22,14 +22,19 @@ export function makeNode(overrides: Partial<ScriptNode> & Pick<ScriptNode, 'Acti
 
 /** A controllable EmitContext for unit-testing a single emitter in
  * isolation, without running the full graph traversal. `next`/`callSection`
- * return predictable tokens; `usedHelpers` records every `useHelper` call. */
-export function fakeContext(): EmitContext & { usedHelpers: Set<string> } {
+ * return predictable tokens; `usedHelpers` records every `useHelper` call.
+ * `unwiredPorts` makes `hasNext`/`next` behave like the real generate.ts
+ * does for a port nothing is actually connected to — a bare `// "Port" not
+ * connected` comment instead of a call — so tests can exercise codegen
+ * that has to handle that case correctly (see caseLine/nextBlock in
+ * factories.ts/logicEmitters.ts). */
+export function fakeContext(unwiredPorts: Set<string> = new Set()): EmitContext & { usedHelpers: Set<string> } {
   const usedHelpers = new Set<string>()
   return {
     usedHelpers,
     useHelper: (id) => usedHelpers.add(id),
-    hasNext: () => true,
-    next: (_node, port) => `NEXT(${port});`,
+    hasNext: (_node, port) => !unwiredPorts.has(port),
+    next: (_node, port) => (unwiredPorts.has(port) ? `// "${port}" not connected` : `NEXT(${port});`),
     callSection: (name) => `CALL_SECTION(${name});`,
     variableKind: () => undefined,
   }

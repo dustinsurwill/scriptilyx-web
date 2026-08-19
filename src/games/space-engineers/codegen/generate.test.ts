@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NodeConnection, ScriptNode } from '../../../types/graph'
 import { generateScript, methodName } from './generate'
+import { minifySource } from './minify'
 
 let counter = 0
 function node(partial: Partial<ScriptNode> & Pick<ScriptNode, 'ActionType'>): ScriptNode {
@@ -93,21 +94,40 @@ describe('generateScript', () => {
     expect(source).toMatch(new RegExp(`${methodName(repeat)}\\(\\);\\s*\\}`))
   })
 
-  it('routes CommandRouter by argument', () => {
+  it('routes CommandRouter by argument, using however many CaseN cases the instance has', () => {
     const start = node({ ActionType: 'Start' })
     const router = node({
       ActionType: 'CommandRouter',
-      Properties: { StartupArgument: 'startup', StopArgument: 'stop' },
-      OutputPorts: ['startup', 'shutdown', 'dock', 'undock', 'mine', 'stop', 'status', 'open_airlock', 'close_airlock', 'open_hangar', 'close_hangar', 'unknown'],
+      Properties: { Case1Value: 'startup', Case2Value: '' },
+      OutputPorts: ['Case1', 'Case2', 'unknown'],
     })
     const onStartup = node({ ActionType: 'Echo', Properties: { Text: 'booting' } })
     const nodes = [start, router, onStartup]
-    const connections = [wire(start, 'Next', router), wire(router, 'startup', onStartup)]
+    const connections = [wire(start, 'Next', router), wire(router, 'Case1', onStartup)]
 
     const { source } = generateScript(nodes, connections)
     expect(source).toContain('switch (_argument)')
     expect(source).toContain('case "startup":')
-    expect(source).not.toContain('case "dock":') // empty threshold/argument is skipped
+    expect(source).not.toContain('case "":') // empty case value is skipped
+  })
+
+  it("doesn't trap CommandRouter's break; inside the not-connected comment for an unwired case (would silently vanish when minified)", () => {
+    const start = node({ ActionType: 'Start' })
+    const router = node({
+      ActionType: 'CommandRouter',
+      Properties: { Case1Value: 'startup' },
+      OutputPorts: ['Case1', 'unknown'],
+    })
+    const nodes = [start, router]
+    const connections = [wire(start, 'Next', router)]
+
+    const { source } = generateScript(nodes, connections)
+    for (const line of source.split('\n')) {
+      const commentAt = line.indexOf('//')
+      if (commentAt !== -1) expect(line.slice(commentAt)).not.toContain('break;')
+    }
+    const minified = minifySource(source)
+    expect(minified).toContain('break;')
   })
 
   it('generates a budgeted dispatcher instead of direct calls in tick-budget mode', () => {

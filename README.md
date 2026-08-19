@@ -2,13 +2,19 @@
 
 **[Live site](https://dustinsurwill.github.io/wirerig/)**
 
-A browser-based, node-graph visual editor for building Space Engineers programmable-block scripts. Wire up nodes on a canvas and get a ready-to-paste C# script for the in-game Programmable Block.
+A browser-based, node-graph visual editor for building game-automation scripts. Wire up nodes on a canvas and get a ready-to-paste script for the target game — no manual coding required. Currently supports:
 
-Runs entirely client-side (React + TypeScript + React Flow) — no backend, no account, no server-side storage. Projects autosave to your browser and can be exported/imported as `.segraph` files.
+- **Space Engineers** — Programmable Block scripts, generated as C#.
+- **Stationeers (IC10)** — IC10 chip scripts, generated as MIPS-like assembly.
+
+Pick a game from the landing page; each one gets its own node catalog, its own canvas, and its own autosave, fully isolated from the others.
+
+Runs entirely client-side (React + TypeScript + React Flow) — no backend, no account, no server-side storage. Projects autosave to your browser and can be exported/imported as save files (`.segraph` for Space Engineers, `.ic10graph` for IC10).
 
 ## Credit
 
-This project is inspired by and reuses the node-database concept and JSON data format (block/action definitions) from **[Scriptilyx SE](https://github.com/ChaosVROne/Scriptilyx-SE)** by **ChaosVROne / Parallel Infinite Worlds Company**, a Windows desktop tool for the same purpose. WireRig is an independent, unaffiliated reimplementation for the browser — it does not include or derive from Scriptilyx SE's source code. If you want the original Windows desktop app, get it from the link above.
+- **Space Engineers**: this project is inspired by and reuses the node-database concept and JSON data format (block/action definitions) from **[Scriptilyx SE](https://github.com/ChaosVROne/Scriptilyx-SE)** by **ChaosVROne / Parallel Infinite Worlds Company**, a Windows desktop tool for the same purpose. WireRig is an independent, unaffiliated reimplementation for the browser. If you want the original Windows desktop app, get it from the link above.
+- **Stationeers (IC10)**: the node catalog and codegen are original, hand-authored work against IC10's own public instruction-set documentation — see `docs/ic10-api-notes.md` for sources. Device/LogicType reference data is compiled from the Stationeers Community Wiki.
 
 ## Development
 
@@ -19,4 +25,4 @@ npm run dev
 
 ## License
 
-MIT — see [LICENSE](./LICENSE). This license covers the code in this repository; it does not apply to the original Scriptilyx SE project linked above.
+MIT — see [LICENSE](./LICENSE)

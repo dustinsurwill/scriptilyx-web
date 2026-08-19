@@ -12,6 +12,7 @@ import {
   runEverySecondsEmitter,
   sectionMethodName,
   stopScriptEmitter,
+  switchEmitter,
   waitSecondsEmitter,
 } from './logicEmitters'
 import { expressionOf, fakeContext, makeNode, statementsOf } from './testUtils'
@@ -135,10 +136,11 @@ describe('stopScriptEmitter', () => {
 })
 
 describe('commandRouterEmitter', () => {
-  it('only emits case labels for arguments the user actually configured', () => {
+  it('only emits case labels for cases the user actually configured', () => {
     const node = makeNode({
       ActionType: 'CommandRouter',
-      Properties: { StartupArgument: 'startup', DockArgument: '' },
+      OutputPorts: ['Case1', 'Case2', 'unknown'],
+      Properties: { Case1Value: 'startup', Case2Value: '' },
     })
     const emit = commandRouterEmitter(node, fakeContext())
     const src = statementsOf(emit).join('\n')
@@ -146,12 +148,75 @@ describe('commandRouterEmitter', () => {
     expect(src).not.toContain('case "":')
     expect(src).toContain('default:')
   })
+
+  it('routes however many CaseN cases this instance has, not a fixed built-in set', () => {
+    const node = makeNode({
+      ActionType: 'CommandRouter',
+      OutputPorts: ['Case1', 'Case2', 'Case3', 'unknown'],
+      Properties: { Case1Value: 'startup', Case2Value: 'dock', Case3Value: 'refuel' },
+    })
+    const emit = commandRouterEmitter(node, fakeContext())
+    const src = statementsOf(emit).join('\n')
+    expect(src).toContain('case "refuel": NEXT(Case3); break;')
+  })
+
+  it('keeps break; a real statement, not trapped inside the "not connected" comment, when a case is unwired', () => {
+    const node = makeNode({
+      ActionType: 'CommandRouter',
+      OutputPorts: ['Case1', 'unknown'],
+      Properties: { Case1Value: 'startup' },
+    })
+    const emit = commandRouterEmitter(node, fakeContext(new Set(['Case1', 'unknown'])))
+    const src = statementsOf(emit).join('\n')
+    expect(src).toContain('case "startup": break; // "Case1" not connected')
+    expect(src).toContain('default: break; // "unknown" not connected')
+  })
 })
+
+describe('switchEmitter', () => {
+  it('emits one case per output port actually on this node instance', () => {
+    const node = makeNode({
+      ActionType: 'Switch',
+      OutputPorts: ['Case1', 'Case2', 'Case3', 'Default'],
+      Properties: { Value: 'startup', Case1Value: 'startup', Case2Value: 'shutdown', Case3Value: 'status' },
+    })
+    const emit = switchEmitter(node, fakeContext())
+    const src = statementsOf(emit).join('\n')
+    expect(src).toContain('switch ("startup") {')
+    expect(src).toContain('case "startup": NEXT(Case1);')
+    expect(src).toContain('case "shutdown": NEXT(Case2);')
+    expect(src).toContain('case "status": NEXT(Case3);')
+    expect(src).toContain('default: NEXT(Default);')
+  })
+
+  it('follows however many cases the instance has been grown/shrunk to, not a fixed set', () => {
+    const twoCase = makeNode({
+      ActionType: 'Switch',
+      OutputPorts: ['Case1', 'Default'],
+      Properties: { Value: 'x', Case1Value: 'a' },
+    })
+    const src = statementsOf(switchEmitter(twoCase, fakeContext())).join('\n')
+    expect(src.match(/case /g)).toHaveLength(1)
+  })
+
+  it('reads Value from a {variable} reference instead of a fixed literal', () => {
+    const node = makeNode({
+      ActionType: 'Switch',
+      OutputPorts: ['Case1', 'Default'],
+      Properties: { Value: '{mode}', Case1Value: 'a' },
+    })
+    const emit = switchEmitter(node, fakeContext())
+    expect(statementsOf(emit).join('\n')).toContain('switch (GetText("mode")) {')
+  })
+})
+
+const NUMBER_GREATER_ROUTER_BUILTIN_OUTPUT_PORTS = ['Greater2', 'Greater3', 'Greater4', 'Greater5', 'Greater6', 'Else']
 
 describe('numberGreaterRouterEmitter', () => {
   it('builds a nested if/else so only the highest matching threshold fires', () => {
     const node = makeNode({
       ActionType: 'NumberGreaterRouter',
+      OutputPorts: NUMBER_GREATER_ROUTER_BUILTIN_OUTPUT_PORTS,
       Properties: { Name: 'x', Threshold2: '2', Threshold3: '3' },
     })
     const emit = numberGreaterRouterEmitter(node, fakeContext())
@@ -161,11 +226,27 @@ describe('numberGreaterRouterEmitter', () => {
   })
 
   it('skips unset thresholds entirely rather than emitting a broken branch', () => {
-    const node = makeNode({ ActionType: 'NumberGreaterRouter', Properties: { Name: 'x', Threshold4: '4' } })
+    const node = makeNode({
+      ActionType: 'NumberGreaterRouter',
+      OutputPorts: NUMBER_GREATER_ROUTER_BUILTIN_OUTPUT_PORTS,
+      Properties: { Name: 'x', Threshold4: '4' },
+    })
     const emit = numberGreaterRouterEmitter(node, fakeContext())
     const src = statementsOf(emit).join('\n')
     expect(src).not.toContain('> undefined')
     expect(src).toContain('> 4')
+  })
+
+  it('checks a user-added Greater7 (beyond the built-in 2..6) before the lower thresholds', () => {
+    const node = makeNode({
+      ActionType: 'NumberGreaterRouter',
+      OutputPorts: [...NUMBER_GREATER_ROUTER_BUILTIN_OUTPUT_PORTS.slice(0, -1), 'Greater7', 'Else'],
+      Properties: { Name: 'x', Threshold2: '2', Threshold7: '7' },
+    })
+    const emit = numberGreaterRouterEmitter(node, fakeContext())
+    const src = statementsOf(emit).join('\n')
+    expect(src.indexOf('> 7')).toBeLessThan(src.indexOf('> 2'))
+    expect(src).toContain('NEXT(Greater7)')
   })
 })
 

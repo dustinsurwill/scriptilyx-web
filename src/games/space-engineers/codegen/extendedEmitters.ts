@@ -12,6 +12,7 @@ import {
   lcdAppend,
   lcdGroupWrite,
   lcdWrite,
+  nextBlock,
   prop,
   terminalActionByNameContains,
   terminalBoolPropertyCondition,
@@ -199,9 +200,9 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
       statements: [
         `{`,
         `    var status = (${b} as IMyShipConnector)?.Status ?? MyShipConnectorStatus.Unconnected;`,
-        `    if (status == MyShipConnectorStatus.Connected) { ${ctx.next(node, 'Connected')} }`,
-        `    else if (status == MyShipConnectorStatus.Connectable) { ${ctx.next(node, 'Connectable')} }`,
-        `    else { ${ctx.next(node, 'Unconnected')} }`,
+        `    if (status == MyShipConnectorStatus.Connected) ${nextBlock(ctx, node, 'Connected')}`,
+        `    else if (status == MyShipConnectorStatus.Connectable) ${nextBlock(ctx, node, 'Connectable')}`,
+        `    else ${nextBlock(ctx, node, 'Unconnected')}`,
         `}`,
       ],
     }
@@ -228,10 +229,10 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
       statements: [
         `{`,
         `    double pct = (${b} as IMyBatteryBlock)?.CurrentStoredPower / (${b} as IMyBatteryBlock)?.MaxStoredPower * 100.0 ?? 0;`,
-        `    if (pct < ${critical}) { ${ctx.next(node, 'Critical')} }`,
-        `    else if (pct < ${low}) { ${ctx.next(node, 'Low')} }`,
-        `    else if (pct >= ${full}) { ${ctx.next(node, 'Full')} }`,
-        `    else { ${ctx.next(node, 'Normal')} }`,
+        `    if (pct < ${critical}) ${nextBlock(ctx, node, 'Critical')}`,
+        `    else if (pct < ${low}) ${nextBlock(ctx, node, 'Low')}`,
+        `    else if (pct >= ${full}) ${nextBlock(ctx, node, 'Full')}`,
+        `    else ${nextBlock(ctx, node, 'Normal')}`,
         `}`,
       ],
     }
@@ -589,7 +590,7 @@ export const extendedEmitters: Record<string, NodeEmitter> = {
         `        _text[${nameVar}] = hit.Name;`,
         `        _text[${typeVar}] = hit.Type.ToString();`,
         `        ${ctx.next(node, 'Detected')}`,
-        `    } else { ${ctx.next(node, 'NotDetected')} }`,
+        `    } else ${nextBlock(ctx, node, 'NotDetected')}`,
         `}`,
       ],
     }
