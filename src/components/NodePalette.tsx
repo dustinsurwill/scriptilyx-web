@@ -1,10 +1,22 @@
 import { useMemo, useState } from 'react'
 import type { NodeDefinition } from '../types/graph'
 
+interface AddonToggle {
+  id: string
+  label: string
+  description: string
+  enabled: boolean
+  onToggle: (id: string) => void
+}
+
 interface NodePaletteProps {
   nodeDefinitions: NodeDefinition[]
   onAddNode: (definition: NodeDefinition) => void
   title?: string
+  /** Optional installable node-catalog extensions (e.g. CC:Tweaked's
+   * Advanced Peripherals). Omitted entirely for games with no addon
+   * concept, so this row never renders for Space Engineers/IC10. */
+  addons?: AddonToggle[]
 }
 
 function matchesQuery(node: NodeDefinition, query: string): boolean {
@@ -44,7 +56,7 @@ function categoryRank(category: string): number {
   return i === -1 ? CATEGORY_PRIORITY.length : i
 }
 
-export function NodePalette({ nodeDefinitions, onAddNode, title = 'WireRig' }: NodePaletteProps) {
+export function NodePalette({ nodeDefinitions, onAddNode, title = 'WireRig', addons }: NodePaletteProps) {
   const [query, setQuery] = useState('')
   const [collapsed, setCollapsed] = useState<Set<string>>(
     () => new Set(nodeDefinitions.map((n) => n.Category)),
@@ -95,6 +107,20 @@ export function NodePalette({ nodeDefinitions, onAddNode, title = 'WireRig' }: N
         <p style={{ fontSize: '12px', opacity: 0.7, margin: '8px 0 0' }}>
           {totalShown} / {nodeDefinitions.length} nodes
         </p>
+        {addons && addons.length > 0 && (
+          <div style={{ marginTop: '10px', borderTop: '1px solid #374151', paddingTop: '8px' }}>
+            {addons.map((addon) => (
+              <label
+                key={addon.id}
+                title={addon.description}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '12px', cursor: 'pointer', marginBottom: 4 }}
+              >
+                <input type="checkbox" checked={addon.enabled} onChange={() => addon.onToggle(addon.id)} />
+                {addon.label}
+              </label>
+            ))}
+          </div>
+        )}
       </div>
       <div style={{ overflowY: 'auto', flex: 1, padding: '0 12px 12px' }}>
         {grouped.map(([category, nodes]) => {
